@@ -2,10 +2,10 @@
 
 A simple starter project.
 
-## Getting Startted
+## Getting Started
 
 Clone the repo and open `index.html` in your browser.
 
 ## Contributing
 
-Pull requests are welome!
+Pull requests are welcome!
