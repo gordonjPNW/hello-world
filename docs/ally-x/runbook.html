@@ -1,0 +1,1171 @@
+<title>ROG Ally X — Optimization Runbook</title>
+
+<style>
+  :root {
+    --bg:        #0E1217;
+    --surface:   #151B22;
+    --surface-2: #1B232C;
+    --line:      #242F3A;
+    --line-soft: #1C242D;
+    --text:      #DAE2EA;
+    --text-dim:  #8794A2;
+    --text-mute: #626F7D;
+    --accent:    #EFA054;
+    --accent-dp: #C97A2E;
+    --accent-bg: rgba(239,160,84,.10);
+    --signal:    #5FC2D6;
+    --signal-bg: rgba(95,194,214,.10);
+    --good:      #6FC08A;
+    --warn:      #E0714F;
+    --warn-bg:   rgba(224,113,79,.10);
+
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", "Roboto Mono", Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    --sp-1: .35rem; --sp-2: .6rem;  --sp-3: 1rem;
+    --sp-4: 1.5rem; --sp-5: 2.25rem; --sp-6: 3.5rem;
+    --rail: 232px;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:        #F1F4F6;
+      --surface:   #FFFFFF;
+      --surface-2: #F7F9FA;
+      --line:      #D8E0E7;
+      --line-soft: #E5EBF0;
+      --text:      #141C24;
+      --text-dim:  #55636F;
+      --text-mute: #74828F;
+      --accent:    #A9600F;
+      --accent-dp: #8A4E0B;
+      --accent-bg: rgba(169,96,15,.08);
+      --signal:    #17708A;
+      --signal-bg: rgba(23,112,138,.08);
+      --good:      #2E7D4F;
+      --warn:      #B4432A;
+      --warn-bg:   rgba(180,67,42,.07);
+    }
+  }
+
+  :root[data-theme="light"] {
+    --bg:#F1F4F6; --surface:#FFFFFF; --surface-2:#F7F9FA; --line:#D8E0E7; --line-soft:#E5EBF0;
+    --text:#141C24; --text-dim:#55636F; --text-mute:#74828F;
+    --accent:#A9600F; --accent-dp:#8A4E0B; --accent-bg:rgba(169,96,15,.08);
+    --signal:#17708A; --signal-bg:rgba(23,112,138,.08);
+    --good:#2E7D4F; --warn:#B4432A; --warn-bg:rgba(180,67,42,.07);
+  }
+  :root[data-theme="dark"] {
+    --bg:#0E1217; --surface:#151B22; --surface-2:#1B232C; --line:#242F3A; --line-soft:#1C242D;
+    --text:#DAE2EA; --text-dim:#8794A2; --text-mute:#626F7D;
+    --accent:#EFA054; --accent-dp:#C97A2E; --accent-bg:rgba(239,160,84,.10);
+    --signal:#5FC2D6; --signal-bg:rgba(95,194,214,.10);
+    --good:#6FC08A; --warn:#E0714F; --warn-bg:rgba(224,113,79,.10);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; gap: var(--sp-3);
+    padding: .7rem clamp(1rem, 3vw, 2rem);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .mark {
+    font-family: var(--mono); font-size: .78rem; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--text);
+    white-space: nowrap;
+  }
+  .mark span { color: var(--accent); }
+  .topbar-meta {
+    margin-left: auto; font-family: var(--mono); font-size: .7rem;
+    color: var(--text-mute); letter-spacing: .08em; white-space: nowrap;
+  }
+  .progress-wrap { display: flex; align-items: center; gap: .5rem; }
+  .progress-track {
+    width: 90px; height: 4px; border-radius: 2px;
+    background: var(--line); overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%; background: var(--accent);
+    transition: width .25s ease;
+  }
+
+  /* ---------- shell ---------- */
+  .shell {
+    display: grid;
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: var(--sp-5) clamp(1rem, 3vw, 2rem) var(--sp-6);
+  }
+
+  .rail { position: relative; }
+  .rail-inner { position: sticky; top: 4.5rem; }
+  .rail-label {
+    font-family: var(--mono); font-size: .65rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--text-mute);
+    padding-bottom: var(--sp-2); border-bottom: 1px solid var(--line);
+    margin-bottom: var(--sp-2);
+  }
+  .rail-nav { display: flex; flex-direction: column; }
+  .rail-nav a {
+    display: grid; grid-template-columns: 1.9rem 1fr; align-items: baseline;
+    gap: .35rem;
+    padding: .3rem .4rem .3rem 0;
+    font-size: .82rem; color: var(--text-dim); text-decoration: none;
+    border-left: 2px solid transparent; padding-left: .55rem;
+    transition: color .15s, border-color .15s;
+  }
+  .rail-nav a .n {
+    font-family: var(--mono); font-size: .7rem; color: var(--text-mute);
+    font-variant-numeric: tabular-nums;
+  }
+  .rail-nav a:hover { color: var(--text); }
+  .rail-nav a.active { color: var(--accent); border-left-color: var(--accent); }
+  .rail-nav a.active .n { color: var(--accent); }
+
+  main { min-width: 0; max-width: 74ch; }
+
+  /* ---------- hero ---------- */
+  .eyebrow {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--accent);
+    display: flex; align-items: center; gap: .6rem;
+  }
+  .eyebrow::after {
+    content: ""; flex: 1; height: 1px; background: var(--line);
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.9rem);
+    line-height: 1.08; letter-spacing: -.025em; font-weight: 680;
+    text-wrap: balance; margin: var(--sp-3) 0 var(--sp-3);
+  }
+  .lede {
+    font-size: 1.08rem; color: var(--text-dim); text-wrap: pretty;
+    margin: 0 0 var(--sp-4);
+  }
+  .lede strong { color: var(--text); font-weight: 600; }
+
+  .specstrip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    border: 1px solid var(--line); border-radius: 3px;
+    background: var(--surface); overflow: hidden;
+    margin-bottom: var(--sp-5);
+  }
+  .spec { padding: .7rem .85rem; border-right: 1px solid var(--line-soft); }
+  .spec:last-child { border-right: 0; }
+  .spec dt {
+    font-family: var(--mono); font-size: .6rem; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-mute); margin-bottom: .15rem;
+  }
+  .spec dd {
+    margin: 0; font-family: var(--mono); font-size: .84rem; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- levers ---------- */
+  .levers {
+    border: 1px solid var(--line); border-radius: 3px;
+    background: var(--surface); padding: var(--sp-4);
+    margin-bottom: var(--sp-6);
+  }
+  .levers h2 {
+    font-size: .78rem; font-family: var(--mono); letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-dim);
+    margin: 0 0 var(--sp-3); font-weight: 600;
+  }
+  .lever-list { display: flex; flex-direction: column; gap: var(--sp-3); margin: 0; }
+  .lever { display: grid; grid-template-columns: auto 1fr; gap: .85rem; align-items: start; }
+  .lever-n {
+    font-family: var(--mono); font-size: .72rem; font-weight: 600;
+    color: var(--bg); background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 2px;
+    display: grid; place-items: center; margin-top: .12rem;
+  }
+  .lever p { margin: 0; font-size: .93rem; color: var(--text-dim); }
+  .lever p strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- phases ---------- */
+  .phase { padding-top: var(--sp-5); scroll-margin-top: 4.5rem; }
+  .phase + .phase { border-top: 1px solid var(--line-soft); margin-top: var(--sp-5); }
+  .phase-head { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; }
+  .phase-n {
+    font-family: var(--mono); font-size: 1.6rem; font-weight: 600;
+    color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .phase-head h2 {
+    font-size: 1.42rem; letter-spacing: -.015em; font-weight: 650;
+    margin: 0; text-wrap: balance; flex: 1 1 auto; min-width: 0;
+  }
+  .chips { display: flex; gap: .4rem; flex-wrap: wrap; margin: var(--sp-2) 0 var(--sp-3); }
+  .chip {
+    font-family: var(--mono); font-size: .66rem; letter-spacing: .07em;
+    text-transform: uppercase; padding: .18rem .5rem; border-radius: 2px;
+    border: 1px solid var(--line); color: var(--text-mute); background: var(--surface-2);
+  }
+  .chip.risk-none { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, transparent); }
+  .chip.risk-low  { color: var(--signal); border-color: color-mix(in srgb, var(--signal) 35%, transparent); }
+
+  .phase h3 {
+    font-size: .96rem; font-weight: 650; letter-spacing: .005em;
+    margin: var(--sp-4) 0 var(--sp-2);
+  }
+  .phase h4 {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-mute); font-weight: 600;
+    margin: var(--sp-3) 0 var(--sp-2);
+  }
+  p { margin: 0 0 var(--sp-3); text-wrap: pretty; }
+  ul, ol { margin: 0 0 var(--sp-3); padding-left: 1.2rem; }
+  li { margin-bottom: .3rem; }
+  li::marker { color: var(--text-mute); }
+  strong { font-weight: 640; }
+  code {
+    font-family: var(--mono); font-size: .86em;
+    background: var(--surface-2); border: 1px solid var(--line-soft);
+    padding: .08em .34em; border-radius: 2px; color: var(--accent);
+  }
+  a { color: var(--signal); text-underline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  /* ---------- code blocks ---------- */
+  .code {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 3px; margin: 0 0 var(--sp-3); overflow: hidden;
+  }
+  .code-label {
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-mute);
+    padding: .4rem .8rem; border-bottom: 1px solid var(--line-soft);
+    background: var(--surface-2);
+  }
+  .code pre {
+    margin: 0; padding: .8rem; overflow-x: auto;
+    font-family: var(--mono); font-size: .8rem; line-height: 1.6; color: var(--text);
+  }
+  .code pre .c { color: var(--text-mute); }
+
+  /* ---------- tables ---------- */
+  .tw { overflow-x: auto; margin: 0 0 var(--sp-3); border: 1px solid var(--line); border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; font-size: .87rem; }
+  th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  thead th {
+    font-family: var(--mono); font-size: .64rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-mute); font-weight: 600;
+    background: var(--surface-2); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.num, td .num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .prof { font-weight: 640; white-space: nowrap; }
+
+  /* ---------- callouts ---------- */
+  .note {
+    border-left: 2px solid var(--signal); background: var(--signal-bg);
+    padding: .7rem .9rem; margin: 0 0 var(--sp-3); border-radius: 0 3px 3px 0;
+    font-size: .91rem;
+  }
+  .note.caution { border-left-color: var(--warn); background: var(--warn-bg); }
+  .note.key { border-left-color: var(--accent); background: var(--accent-bg); }
+  .note p:last-child { margin-bottom: 0; }
+  .note-label {
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--signal); font-weight: 600;
+    display: block; margin-bottom: .2rem;
+  }
+  .note.caution .note-label { color: var(--warn); }
+  .note.key .note-label { color: var(--accent); }
+
+  .dont { border: 1px solid var(--line); border-radius: 3px; padding: var(--sp-3); margin: 0 0 var(--sp-3); }
+  .dont h4 { margin-top: 0; color: var(--warn); }
+  .dont ul { margin-bottom: 0; }
+
+  /* ---------- checklist ---------- */
+  .check {
+    border: 1px solid var(--line); border-radius: 3px;
+    background: var(--surface); padding: var(--sp-3) var(--sp-3) .8rem;
+    margin-top: var(--sp-4);
+  }
+  .check-h {
+    font-family: var(--mono); font-size: .64rem; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-mute); margin-bottom: var(--sp-2);
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .check-h .count { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .check ul { list-style: none; padding: 0; margin: 0; }
+  .check li { margin: 0; }
+  .check label {
+    display: grid; grid-template-columns: auto 1fr; gap: .55rem; align-items: start;
+    padding: .28rem 0; cursor: pointer; font-size: .89rem; color: var(--text-dim);
+  }
+  .check input { margin: .35rem 0 0; accent-color: var(--accent); cursor: pointer; }
+  .check input:checked + span { color: var(--text-mute); text-decoration: line-through; }
+
+  footer {
+    max-width: 74ch; margin: var(--sp-6) auto 0;
+    padding: var(--sp-4) clamp(1rem,3vw,2rem) 0;
+    border-top: 1px solid var(--line);
+    font-size: .82rem; color: var(--text-mute);
+  }
+  footer p { margin-bottom: var(--sp-2); }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .rail { display: none; }
+    main { max-width: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+  }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="topbar">
+  <div class="mark">ROG Ally X <span>/</span> Runbook</div>
+  <div class="topbar-meta progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <span id="pcount">0/58</span>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="rail" aria-label="Phases">
+    <div class="rail-inner">
+      <div class="rail-label">Phases</div>
+      <div class="rail-nav" id="railnav">
+        <a href="#p1"><span class="n">01</span><span>Baseline</span></a>
+        <a href="#p2"><span class="n">02</span><span>Firmware &amp; drivers</span></a>
+        <a href="#p3"><span class="n">03</span><span>Windows tuning</span></a>
+        <a href="#p4"><span class="n">04</span><span>Sleep &amp; battery</span></a>
+        <a href="#p5"><span class="n">05</span><span>Power profiles</span></a>
+        <a href="#p6"><span class="n">06</span><span>Steam setup</span></a>
+        <a href="#p7"><span class="n">07</span><span>Display &amp; upscaling</span></a>
+        <a href="#p8"><span class="n">08</span><span>Docked mode</span></a>
+        <a href="#p9"><span class="n">09</span><span>Storage</span></a>
+        <a href="#p10"><span class="n">10</span><span>Accessories</span></a>
+        <a href="#p11"><span class="n">11</span><span>Validation</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="eyebrow">Optimization runbook</div>
+    <h1>Tuning the ROG Ally X for handheld and docked play</h1>
+    <p class="lede">Eleven phases, in order, for an <strong>ASUS ROG Ally X (2024)</strong> running
+      <strong>Windows 11 with Steam</strong>. Software, settings, and external accessories only —
+      nothing here opens the chassis or touches your warranty.</p>
+
+    <dl class="specstrip">
+      <div class="spec"><dt>APU</dt><dd>Ryzen Z1 Extreme</dd></div>
+      <div class="spec"><dt>Compute units</dt><dd>12 · RDNA 3</dd></div>
+      <div class="spec"><dt>Memory</dt><dd>24 GB LPDDR5X</dd></div>
+      <div class="spec"><dt>Battery</dt><dd>80 Wh</dd></div>
+      <div class="spec"><dt>Panel</dt><dd>7″ 1080p 120 Hz</dd></div>
+      <div class="spec"><dt>Storage</dt><dd>1 TB M.2 2280</dd></div>
+    </dl>
+
+    <section class="levers">
+      <h2>Where the gains actually are</h2>
+      <div class="lever-list">
+        <div class="lever">
+          <div class="lever-n">1</div>
+          <p><strong>Render resolution and frame caps</strong> (Phase 7). Larger than every registry
+            tweak combined. 900p + FSR Quality at a 40 fps cap beats native 1080p uncapped on every
+            axis that matters — smoothness, heat, noise, runtime.</p>
+        </div>
+        <div class="lever">
+          <div class="lever-n">2</div>
+          <p><strong>Hibernate instead of Modern Standby</strong> (Phase 4). Windows never really
+            sleeps. This is why the handheld is flat when you pull it out of a bag, and it's a
+            ten-minute fix.</p>
+        </div>
+        <div class="lever">
+          <div class="lever-n">3</div>
+          <p><strong>Four power profiles, not three</strong> (Phase 5). Stock Armoury Crate has no
+            concept of "docked, fan noise is irrelevant" or "on a train at 40 %".</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 01 -->
+    <section class="phase" id="p1">
+      <div class="phase-head"><span class="phase-n">01</span><h2>Baseline</h2></div>
+      <div class="chips"><span class="chip">~30 min</span><span class="chip risk-none">No risk</span><span class="chip">USB drive</span></div>
+
+      <p>Skipping this doesn't break anything — it just means you'll never know whether the rest
+        worked, or which change to undo when something regresses.</p>
+
+      <h3>Record what you're starting from</h3>
+      <div class="code">
+        <div class="code-label">PowerShell</div>
+<pre>Get-ComputerInfo -Property OsName,OsVersion,OsBuildNumber,BiosSMBIOSBIOSVersion
+Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,DriverDate</pre>
+      </div>
+      <p>Also note your BIOS/MCU versions and Armoury Crate SE version from
+        <strong>Update Center</strong>.</p>
+
+      <h3>Benchmark</h3>
+      <p>Pick something repeatable — a built-in benchmark (Cyberpunk 2077, Shadow of the Tomb Raider)
+        has low run-to-run variance. Consistency matters far more than which one. Run at
+        <strong>Turbo, plugged in, 1080p native, upscaling off</strong> — you're measuring hardware,
+        not FSR. Record average FPS, <strong>1 % lows</strong>, temperatures, package power.</p>
+
+      <h3>Battery — two numbers</h3>
+      <p><strong>Active:</strong> 30 minutes of play at Performance mode. Note the percentage lost and
+        the wattage from the overlay.</p>
+      <p><strong>Standby:</strong> charge up, one press of the power button, leave it 8+ hours
+        untouched, check it in the morning. Write the number down — Phase 4 exists to fix it.</p>
+
+      <div class="code">
+        <div class="code-label">PowerShell — reports worth keeping</div>
+<pre>powercfg /batteryreport /output "$HOME\Desktop\battery-baseline.html"
+powercfg /sleepstudy   /output "$HOME\Desktop\sleepstudy-baseline.html"
+powercfg /a   <span class="c"># which sleep states exist — want Hibernate listed</span></pre>
+      </div>
+
+      <div class="note caution">
+        <span class="note-label">Insurance</span>
+        <p>Save your <strong>BitLocker recovery key</strong> to your Microsoft account and somewhere
+          physical, and build ASUS recovery media on a 16 GB USB stick. You almost certainly won't
+          need either. The cost of not having them when you do is the whole drive.</p>
+      </div>
+
+      <div class="check" data-check>
+        <div class="check-h">Done when <span class="count"></span></div>
+        <ul>
+          <li><label><input type="checkbox" id="c1a"><span>Versions recorded</span></label></li>
+          <li><label><input type="checkbox" id="c1b"><span>Benchmark run and written down</span></label></li>
+          <li><label><input type="checkbox" id="c1c"><span>30-minute active drain recorded</span></label></li>
+          <li><label><input type="checkbox" id="c1d"><span>Overnight standby drain recorded</span></label></li>
+          <li><label><input type="checkbox" id="c1e"><span>BitLocker key saved, recovery USB created</span></label></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 02 -->
+    <section class="phase" id="p2">
+      <div class="phase-head"><span class="phase-n">02</span><h2>Firmware and drivers</h2></div>
+      <div class="chips"><span class="chip">~45 min</span><span class="chip risk-low">Low risk</span><span class="chip">Stay plugged in</span></div>
+
+      <p>Stale firmware is the most common cause of "loud fan, bad battery." ASUS shipped real power
+        and thermal fixes across this device's life. Get current before tuning, or you'll be tuning
+        around bugs that were already fixed.</p>
+
+      <div class="note caution">
+        <span class="note-label">Caution</span>
+        <p>Keep it on AC for this entire phase. A BIOS or MCU flash interrupted by a flat battery is
+          the one way to genuinely brick the handheld.</p>
+      </div>
+
+      <p>In <strong>Armoury Crate SE → Settings → Update Center</strong> (check MyASUS too — they
+        occasionally surface different packages), install in this order, rebooting when asked:
+        <strong>MCU firmware</strong> → <strong>BIOS</strong> → chipset/control-interface packages.
+        Re-check afterward; updates chain and one round often isn't enough.</p>
+
+      <p>Armoury Crate SE updates <strong>separately from firmware</strong> — people miss this
+        constantly.</p>
+
+      <h3>Graphics driver — a real decision</h3>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Option</th><th>Gets you</th><th>Costs you</th></tr></thead>
+          <tbody>
+            <tr><td class="prof">ASUS-validated<br><span class="chip risk-low">start here</span></td>
+                <td>Tuned for this power envelope, validated against your firmware, fewer power-state oddities</td>
+                <td>Lags AMD's public releases, sometimes by months</td></tr>
+            <tr><td class="prof">Generic AMD<br>Adrenalin</td>
+                <td>Newer FSR runtime, access to AFMF 2 frame generation, day-one fixes</td>
+                <td>Occasionally regresses handheld power behavior; ASUS doesn't validate it</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Do Phases 3–11 on the ASUS build, then try Adrenalin and <em>measure</em> whether it helped
+        you specifically. Switch with <strong>DDU</strong> — never install one over the other.
+        Download both the tool and your target driver first, disconnect Wi-Fi so Windows doesn't race
+        you, clean and restart, then install.</p>
+
+      <div class="note">
+        <span class="note-label">Watch for</span>
+        <p>Windows Update sometimes silently replaces your graphics driver with an older version. If
+          frame rate mysteriously drops a week from now, check the driver version first — it's
+          usually this.</p>
+      </div>
+
+      <div class="check" data-check>
+        <div class="check-h">Done when <span class="count"></span></div>
+        <ul>
+          <li><label><input type="checkbox" id="c2a"><span>MCU firmware current</span></label></li>
+          <li><label><input type="checkbox" id="c2b"><span>BIOS current</span></label></li>
+          <li><label><input type="checkbox" id="c2c"><span>Armoury Crate SE current</span></label></li>
+          <li><label><input type="checkbox" id="c2d"><span>Driver lane deliberately chosen</span></label></li>
+          <li><label><input type="checkbox" id="c2e"><span>Windows Update clean after a reboot</span></label></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section class="phase" id="p3">
+      <div class="phase-head"><span class="phase-n">03</span><h2>Windows tuning</h2></div>
+      <div class="chips"><span class="chip">~1 hr</span><span class="chip risk-low">Low risk</span><span class="chip">All reversible</span></div>
+
+      <p>Deliberately <em>not</em> a debloat script. Those break things in ways that surface three
+        weeks later with no obvious cause. Every item says what it buys you, so you can skip what you
+        don't want.</p>
+
+      <h3>Choose a shell</h3>
+      <p>The desktop is the wrong front end for a 7″ touchscreen held in two hands. Two good options:</p>
+      <ul>
+        <li><strong>Xbox Full Screen Experience</strong> — Microsoft's controller-first shell, now
+          available on all Windows 11 handhelds rather than just the Xbox Ally. Aggregates Steam and
+          Game Pass, and <strong>suspends much of the desktop shell</strong>, freeing memory and
+          background cycles. <em>Settings → Gaming → Full screen experience.</em></li>
+        <li><strong>Steam Big Picture at startup</strong> — simpler, fewer layers, good if everything
+          you play is on Steam anyway.</li>
+      </ul>
+      <p>Recommendation: FSE as the shell, Steam inside it. You get the overhead reduction either way,
+        and FSE handles the non-Steam launchers you'll inevitably accumulate.</p>
+
+      <h3>Disable VBS / Memory Integrity</h3>
+      <p>Consistently the largest single frame-rate recovery on Z1 Extreme handhelds — the hypervisor
+        layer costs real performance on a low-power APU. <em>Windows Security → Device security →
+        Core isolation → Memory integrity → Off</em>, then reboot. Verify in <code>msinfo32</code>.</p>
+      <div class="note caution">
+        <span class="note-label">The trade-off, stated plainly</span>
+        <p>Memory Integrity blocks a genuine class of driver-based attacks. Turning it off measurably
+          lowers your defenses. On a gaming-only handheld that's reasonable; on a device where you do
+          banking and work email, less so. Two clicks to reverse either way.</p>
+      </div>
+
+      <h3>The rest</h3>
+      <ul>
+        <li><strong>Power mode → Balanced.</strong> Not "Best power efficiency," which throttles the
+          CPU even on AC and makes people think their device is defective.</li>
+        <li><strong>Prune startup apps.</strong> Where handheld idle drain genuinely originates — every
+          launcher you've ever installed wants to start with Windows. Keep Armoury Crate and ASUS
+          services; drop Epic, EA, Ubisoft, Battle.net, GOG, Spotify, OneDrive.</li>
+        <li><strong>HAGS on, VRR on, Game Mode on.</strong> VRR is required for Phase 7 to work.</li>
+        <li><strong>Background capture off</strong> — costs frames continuously for a feature most
+          people never use.</li>
+        <li><strong>Do not disturb on</strong>, search indexing set to Classic rather than Enhanced.</li>
+      </ul>
+
+      <div class="dont">
+        <h4>Don't do these</h4>
+        <ul>
+          <li><strong>Third-party debloat scripts</strong> — they strip components Windows Update later
+            expects, and breakage surfaces weeks later with no traceable cause.</li>
+          <li><strong>Disabling Defender</strong> — small cost on Zen 4, and you just reduced your
+            security posture above.</li>
+          <li><strong>Disabling SysMain or the page file</strong> — widely recommended, and both make
+            things worse on a 24 GB machine that then stutters when a game wants memory you told
+            Windows not to reserve.</li>
+          <li><strong>Manual CPU affinity or priority per game</strong> — the scheduler does it better,
+            and it resets on reboot anyway.</li>
+        </ul>
+      </div>
+
+      <div class="check" data-check>
+        <div class="check-h">Done when <span class="count"></span></div>
+        <ul>
+          <li><label><input type="checkbox" id="c3a"><span>Controller-first shell set to launch at boot</span></label></li>
+          <li><label><input type="checkbox" id="c3b"><span>Memory integrity off (or a deliberate decision to keep it)</span></label></li>
+          <li><label><input type="checkbox" id="c3c"><span>Power mode on Balanced</span></label></li>
+          <li><label><input type="checkbox" id="c3d"><span>Startup apps pruned</span></label></li>
+          <li><label><input type="checkbox" id="c3e"><span>HAGS, VRR, Game Mode on; capture off</span></label></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 04 -->
+    <section class="phase" id="p4">
+      <div class="phase-head"><span class="phase-n">04</span><h2>Sleep, standby, and battery life</h2></div>
+      <div class="chips"><span class="chip">~30 min</span><span class="chip risk-low">Low risk</span><span class="chip">+ overnight test</span></div>
+
+      <div class="note key">
+        <span class="note-label">Why this phase matters most</span>
+        <p>A SteamOS-style handheld suspends and resumes like a Switch. Windows uses <strong>Modern
+          Standby</strong>, where the machine never truly sleeps — it keeps the network alive and lets
+          background tasks wake it. Leave the Ally X "asleep" in a bag overnight and you can find it
+          badly drained, or hot, or flat. Almost every guide skips this.</p>
+      </div>
+
+      <p>The fix: <strong>hibernate for long sleeps, standby for short ones.</strong></p>
+
+      <div class="code">
+        <div class="code-label">PowerShell (Administrator) — enable hibernate</div>
+<pre>powercfg /a      <span class="c"># confirm Hibernate is listed</span>
+powercfg /h on   <span class="c"># enable it if not</span></pre>
+      </div>
+
+      <h3>Make the power button hibernate</h3>
+      <p>The single highest-value change here. One press should put the device away properly.</p>
+      <div class="code">
+        <div class="code-label">PowerShell (Administrator)</div>
+<pre><span class="c"># 0=nothing 1=sleep 2=hibernate 3=shutdown 4=display off</span>
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 2
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 2
+powercfg /setactive SCHEME_CURRENT</pre>
+      </div>
+      <p>The power button is also your fingerprint reader — hibernate resume still prompts normally.</p>
+
+      <h3>Hibernate automatically after a short sleep</h3>
+      <p>Best of both: instant resume for a bathroom break, proper shutdown before it goes in a bag.</p>
+      <div class="code">
+        <div class="code-label">PowerShell (Administrator) — seconds</div>
+<pre><span class="c"># 30 min on battery, 60 min plugged in</span>
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_SLEEP HIBERNATEIDLE 1800
+powercfg /setacvalueindex SCHEME_CURRENT SUB_SLEEP HIBERNATEIDLE 3600
+powercfg /setactive SCHEME_CURRENT</pre>
+      </div>
+
+      <h3>Stop things waking it</h3>
+      <p>Run <code>powercfg /lastwake</code> and <code>powercfg /devicequery wake_armed</code> to find
+        the culprit — usually the Wi-Fi adapter. Disarm it in Device Manager → Power Management, then
+        disable <strong>wake timers</strong> in advanced power settings.</p>
+
+      <h3>Cap the charge at 80 %</h3>
+      <p>You dock regularly, so the device sits at 100 % on AC — the main long-term degradation path
+        for a lithium cell. <em>MyASUS → Battery Care Mode</em>, set to 80 %. Costs roughly a fifth of
+        your runtime, meaningfully slows capacity loss. Lift it before a trip. If you're mostly away
+        from power, this is the wrong trade — use the full charge and accept the wear.</p>
+
+      <h4>Expected runtime · 80 Wh</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Profile</th><th>TDP</th><th>Runtime</th><th>Typical use</th></tr></thead>
+          <tbody>
+            <tr><td class="prof">Battery Sipper</td><td class="num">10–13 W</td><td class="num">4–6 hr</td><td>2D, indie, emulation, older titles</td></tr>
+            <tr><td class="prof">Handheld Default</td><td class="num">15–17 W</td><td class="num">3–3.5 hr</td><td>Most AAA at 900p + FSR</td></tr>
+            <tr><td class="prof">Handheld Max</td><td class="num">25 W</td><td class="num">2–2.5 hr</td><td>Demanding titles, short sessions</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>At an 80 % cap, subtract about a fifth. The biggest runtime lever isn't TDP — it's
+        <strong>capping frame rate</strong> (Phase 7).</p>
+
+      <div class="check" data-check>
+        <div class="check-h">Done when <span class="count"></span></div>
+        <ul>
+          <li><label><input type="checkbox" id="c4a"><span>Hibernate available</span></label></li>
+          <li><label><input type="checkbox" id="c4b"><span>Power button set to hibernate</span></label></li>
+          <li><label><input type="checkbox" id="c4c"><span>HIBERNATEIDLE configured</span></label></li>
+          <li><label><input type="checkbox" id="c4d"><span>Wake timers disabled, network wake disarmed</span></label></li>
+          <li><label><input type="checkbox" id="c4e"><span>Battery Care at 80 % (or a deliberate decision against)</span></label></li>
+          <li><label><input type="checkbox" id="c4f"><span>Overnight test repeated and compared</span></label></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section class="phase" id="p5">
+      <div class="phase-head"><span class="phase-n">05</span><h2>Armoury Crate power profiles</h2></div>
+      <div class="chips"><span class="chip">~45 min</span><span class="chip risk-none">No risk</span><span class="chip">GUI only</span></div>
+
+      <p>Stock gives you Silent / Performance / Turbo — three answers to a question that has four. It
+        has no idea whether you're on a couch with an outlet or on a train at 40 %, and no concept of
+        "docked, fan noise is irrelevant."</p>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>Profile</th><th>TDP</th><th>Fan</th><th>When</th></tr></thead>
+          <tbody>
+            <tr><td class="prof">Battery Sipper</td><td class="num">10–13 W</td><td>Quiet</td><td>2D, indie, emulation. Maximum runtime</td></tr>
+            <tr><td class="prof">Handheld Default</td><td class="num">15–17 W</td><td>Balanced</td><td>Your everyday driver — best perf-per-watt</td></tr>
+            <tr><td class="prof">Handheld Max</td><td class="num">25 W</td><td>Performance</td><td>Plugged in on the couch, demanding titles</td></tr>
+            <tr><td class="prof">Docked</td><td class="num">30 W</td><td>Aggressive</td><td>External display, noise doesn't matter</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Why 15–17 W is the sweet spot</h3>
+      <p>The Z1 Extreme's efficiency curve flattens noticeably past roughly 17 W. Going 15 → 25 W costs
+        about <strong>60 % more power for 15–20 % more frame rate</strong> in GPU-limited titles — and
+        that's the good case. Below ~13 W the GPU starves and frame pacing gets choppy even when the
+        average looks fine.</p>
+
+      <h3>Set all three power limits, not just one</h3>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Value</th><th>Controls</th><th>Set to</th></tr></thead>
+          <tbody>
+            <tr><td class="prof">SPL</td><td>Sustained power limit — your actual target</td><td class="num">The table number</td></tr>
+            <tr><td class="prof">sPPT</td><td>Short-term boost</td><td class="num">SPL + 2–3 W</td></tr>
+            <tr><td class="prof">fPPT</td><td>Instantaneous spikes</td><td class="num">SPL + 4–5 W</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Handheld Default becomes <strong>17 / 20 / 22</strong>. Setting all three equal is a common
+        mistake — it flattens boost response and makes the device feel sluggish in menus and during
+        level loads.</p>
+
+      <h3>Fan curves</h3>
+      <p>The stock curve is conservative until it abruptly isn't: it stays quiet, lets temperature
+        climb, then ramps hard. The audible <em>change</em> is more annoying than steady noise, so ramp
+        earlier and more gradually. You can't damage anything — the APU throttles rather than cooks.</p>
+      <div class="note">
+        <span class="note-label">Common self-inflicted problem</span>
+        <p>If a profile ever feels slower than it should, check temperatures before anything else. A
+          too-quiet fan curve causes throttling that reads as a mysterious performance loss.</p>
+      </div>
+
+      <h3>VRAM</h3>
+      <p><strong>Auto is correct for the large majority of titles</strong> — with 24 GB the driver has
+        room to manage it. Force 6 GB only when you hit a specific symptom (texture-load stutter, or a
+        game refusing to launch over video memory), 8 GB if that didn't fix it. Don't over-allocate
+        "just in case": fixed VRAM is carved permanently out of system memory and starves the game of
+        the RAM it also needs.</p>
+
+      <p>Bind <strong>Operating Mode</strong>, the <strong>performance overlay</strong>, and the
+        <strong>FPS limiter</strong> to Command Center. Leave the rear buttons unmapped here — Steam
+        Input handles them better per-game in Phase 6.</p>
+
+      <div class="check" data-check>
+        <div class="check-h">Done when <span class="count"></span></div>
+        <ul>
+          <li><label><input type="checkbox" id="c5a"><span>Four Manual profiles with SPL/sPPT/fPPT set</span></label></li>
+          <li><label><input type="checkbox" id="c5b"><span>Fan curve set per profile</span></label></li>
+          <li><label><input type="checkbox" id="c5c"><span>VRAM on Auto</span></label></li>
+          <li><label><input type="checkbox" id="c5d"><span>Per-game profiles assigned for regulars</span></label></li>
+          <li><label><input type="checkbox" id="c5e"><span>Command Center bindings configured</span></label></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section class="phase" id="p6">
+      <div class="phase-head"><span class="phase-n">06</span><h2>Steam setup</h2></div>
+      <div class="chips"><span class="chip">~45 min</span><span class="chip risk-none">No risk</span></div>
+
+      <p>Most of the value here is <strong>Steam Input</strong> — the most underused feature on Windows
+        handhelds.</p>
+
+      <p>If you're using FSE as your shell, set Steam to <em>start minimized</em> so you don't get two
+        full-screen UIs fighting on boot. Your Steam library appears in FSE automatically.</p>
+
+      <h3>Rear buttons (M1 / M2)</h3>
+      <p>Reachable without lifting your thumbs off the sticks, which is exactly why they're worth
+        mapping per-game rather than globally.</p>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Genre</th><th>M1</th><th>M2</th></tr></thead>
+          <tbody>
+            <tr><td class="prof">Shooters</td><td>Crouch / slide</td><td>Melee or grenade</td></tr>
+            <tr><td class="prof">Action / soulslike</td><td>Dodge / roll</td><td>Item use</td></tr>
+            <tr><td class="prof">Racing</td><td>Look behind</td><td>Handbrake</td></tr>
+            <tr><td class="prof">Anything with menus</td><td>Map</td><td>Quick save</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Gyro aiming</h3>
+      <p>The Ally X has a gyroscope and most people never turn it on. Used as <strong>fine aim on top
+        of the right stick</strong> — not as a replacement — it meaningfully improves precision.</p>
+      <ul>
+        <li><strong>Behavior:</strong> As Mouse</li>
+        <li><strong>Activation:</strong> On Right Stick Touch — so the device doesn't fight you when
+          you shift grip</li>
+        <li><strong>Sensitivity:</strong> start low and raise it. Too high is unusable and puts people
+          off the feature permanently</li>
+      </ul>
+      <p>Give it a couple of hours. It feels wrong for twenty minutes and then feels obvious.</p>
+
+      <p>Since you play both handheld and docked, build <strong>two controller configurations</strong>
+        for anything you play in both contexts — different controller, different ergonomics, different
+        stick curves, and you probably don't want gyro on a couch pad.</p>
+
+      <h3>Launch options worth knowing</h3>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Option</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td><code>-vulkan</code> / <code>-dx12</code></td><td>Force a renderer. On RDNA 3, Vulkan or DX12 is usually faster where a game offers both — test per title</td></tr>
+            <tr><td><code>-fullscreen</code></td><td>Exclusive fullscreen, avoiding compositor overhead</td></tr>
+            <tr><td><code>-novid</code></td><td>Skips intro videos (Source games and others)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Don't paste launch options you found online without knowing what they do — many are
+        cargo-culted from desktop hardware and several are counterproductive on an APU.</p>
+
+      <p>Turn on <strong>shader pre-caching</strong> (do the background processing plugged in — it's a
+        real power draw), set downloads to <strong>throttle while games are running</strong>, and
+        consider <em>only update when I launch</em> so the device doesn't wake to download 40 GB you
+        didn't ask for.</p>
+
+      <div class="check" data-check>
+        <div class="check-h">Done when <span class="count"></span></div>
+        <ul>
+          <li><label><input type="checkbox" id="c6a"><span>Steam and shell coexisting cleanly at boot</span></label></li>
+          <li><label><input type="checkbox" id="c6b"><span>M1/M2 mapped for main games</span></label></li>
+          <li><label><input type="checkbox" id="c6c"><span>Gyro configured and given a real trial</span></label></li>
+          <li><label><input type="checkbox" id="c6d"><span>Separate handheld and docked configs</span></label></li>
+          <li><label><input type="checkbox" id="c6e"><span>Shader pre-caching on, downloads throttled</span></label></li>
+          <li><label><input type="checkbox" id="c6f"><span>Cloud saves verified for games you care about</span></label></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 07 -->
+    <section class="phase" id="p7">
+      <div class="phase-head"><span class="phase-n">07</span><h2>Display and upscaling</h2></div>
+      <div class="chips"><span class="chip">~30 min</span><span class="chip risk-none">No risk</span><span class="chip">Biggest lever</span></div>
+
+      <div class="note key">
+        <span class="note-label">Read this one</span>
+        <p>No registry tweak, driver swap, or TDP profile comes close to the effect of choosing a
+          sensible render resolution and frame target. The Z1 Extreme is a 12-CU GPU at 15–30 W;
+          asking it for native 1080p Ultra is asking the wrong question. <strong>Render low, upscale
+          smart, cap the frame rate.</strong></p>
+      </div>
+
+      <h3>Cap your frame rate</h3>
+      <p>Counterintuitive and the most impactful battery setting on the device: <strong>a capped 40 fps
+        often beats an uncapped 55</strong> — smoother pacing, lower draw, longer session, less noise.
+        With VRR on a 120 Hz panel these are all clean: <strong>30</strong> for heavy AAA,
+        <strong>40</strong> as the handheld sweet spot, <strong>60</strong> where responsiveness
+        matters, <strong>90–120</strong> for 2D and competitive titles.</p>
+
+      <h3>Settings to cut first</h3>
+      <p>Expensive and least visible at 7″, in order: <strong>shadows</strong> (usually the single most
+        expensive setting — medium is nearly always enough), <strong>ray tracing</strong> (off, whatever
+        the menu implies), <strong>volumetric fog</strong>, <strong>ambient occlusion</strong>,
+        <strong>heavy anti-aliasing</strong> stacked on top of upscaling. Keep
+        <strong>textures high</strong> — you have memory to spare and it's the setting you actually see.</p>
+
+      <h3>Which upscaler</h3>
+      <ul>
+        <li><strong>In-game FSR — your default.</strong> It has motion vectors and depth data, so it
+          beats driver-level scaling. Quality preset; Balanced when you need more.</li>
+        <li><strong>RSR — the fallback.</strong> Driver-level, works with any game including ones with
+          no FSR support. Lower quality because it's working on the final image blind. Use only where
+          FSR isn't offered.</li>
+        <li><strong>AFMF 2 — frame generation.</strong> Worth it for single-player, slower titles
+          already at 40+ fps. <strong>Not</strong> for competitive or twitchy games, and not below
+          ~40 fps where artifacts get obvious. It adds input latency — it makes a game <em>look</em>
+          smoother while feeling the same or slightly worse.</li>
+      </ul>
+      <p>In AMD Software: <strong>Radeon Image Sharpening on</strong> (~70–80 %, nearly free, offsets
+        upscaling softness) and <strong>Anti-Lag on</strong>. Skip <strong>Radeon Boost</strong> — the
+        resolution flickering during motion is distracting at handheld distances.</p>
+
+      <h3>Docked: output 1080p, not 4K</h3>
+      <p>The Z1 Extreme has no business rendering 4K, and your TV's scaler is better at upscaling 1080p
+        than the GPU is at rendering a quarter-rate 4K image. Exceptions: 2D, older titles, emulation,
+        and anything already comfortably above 60 fps.</p>
+
+      <h4>Quick reference</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Context</th><th>Render</th><th>Output</th><th>Cap</th><th>Upscaling</th></tr></thead>
+          <tbody>
+            <tr><td class="prof">Handheld, heavy AAA</td><td class="num">720p</td><td class="num">1080p</td><td class="num">30–40</td><td>FSR Quality</td></tr>
+            <tr><td class="prof">Handheld, standard</td><td class="num">900p</td><td class="num">1080p</td><td class="num">40–60</td><td>FSR Quality</td></tr>
+            <tr><td class="prof">Handheld, light</td><td class="num">1080p</td><td class="num">1080p</td><td class="num">60–120</td><td>Off</td></tr>
+            <tr><td class="prof">Docked, AAA</td><td class="num">900p–1080p</td><td class="num">1080p</td><td class="num">60</td><td>FSR Quality</td></tr>
+            <tr><td class="prof">Docked, light</td><td class="num">1080p+</td><td class="num">1080p–4K</td><td class="num">60+</td><td>Off</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="check" data-check>
+        <div class="check-h">Done when <span class="count"></span></div>
+        <ul>
+          <li><label><input type="checkbox" id="c7a"><span>VRR confirmed working</span></label></li>
+          <li><label><input type="checkbox" id="c7b"><span>Frame cap bound to Command Center</span></label></li>
+          <li><label><input type="checkbox" id="c7c"><span>Per-game resolution targets set</span></label></li>
+          <li><label><input type="checkbox" id="c7d"><span>RIS and Anti-Lag on</span></label></li>
+          <li><label><input type="checkbox" id="c7e"><span>Frame generation tested, decided per game</span></label></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 08 -->
+    <section class="phase" id="p8">
+      <div class="phase-head"><span class="phase-n">08</span><h2>Docked mode</h2></div>
+      <div class="chips"><span class="chip">~1 hr</span><span class="chip risk-none">No risk</span><span class="chip">Hardware choices</span></div>
+
+      <p>Mostly about three unglamorous choices — <strong>which port, which cable, which charger</strong>
+        — which are exactly the three most people get wrong.</p>
+
+      <h3>Use the USB4 port</h3>
+      <p>The two USB-C ports are <strong>not</strong> equivalent. USB4 has full DisplayPort alt mode,
+        the highest bandwidth, and the best PD negotiation; the USB 3.2 Gen 2 port is more limited when
+        driving display, power, and peripherals simultaneously. USB4 is what replaced the original
+        Ally's proprietary XG Mobile connector, which is why it's the capable one.</p>
+
+      <h3>The cable is not a detail</h3>
+      <p>Use a certified <strong>Ultra High Speed HDMI (2.1)</strong> cable. The cheap one in your
+        drawer is the most common reason a dock "won't do 120 Hz" — it'll happily negotiate 60 Hz and
+        silently refuse more, with no error explaining why.</p>
+
+      <div class="note caution">
+        <span class="note-label">The 65 W problem</span>
+        <p>Docked, the Ally X runs a ~30 W profile, charges an 80 Wh battery, and powers everything in
+          the dock. The included <strong>65 W charger can't always cover it</strong>. Symptoms are
+          confusing rather than obvious: the battery slowly <em>drains</em> while "charging," or
+          performance quietly drops. Fix: a <strong>100 W USB-C PD GaN charger</strong>. Check your
+          dock's passthrough rating too — some reserve 15–20 W for themselves.</p>
+      </div>
+
+      <p>Dock requirements in priority order: <strong>HDMI 2.1</strong>, <strong>100 W PD
+        passthrough</strong>, <strong>Gigabit Ethernet</strong> (kills wireless latency, transforms
+        100 GB installs), USB-A ports, and a cradle that doesn't block the top exhaust vent.</p>
+
+      <p>On the Windows side: set the TV as the <em>only</em> display rather than running both panels,
+        set 1080p at the highest refresh the chain supports, and <strong>verify it actually
+        negotiated</strong> in Advanced display settings. Audio doesn't always follow the display —
+        set it separately. Then switch to the Docked profile from Phase 5.</p>
+
+      <h4>Troubleshooting</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Symptom</th><th>Check first</th></tr></thead>
+          <tbody>
+            <tr><td>No 120 Hz option</td><td>Cable, then USB4 port, then dock's HDMI version</td></tr>
+            <tr><td>Battery draining while docked</td><td>Charger wattage — the 65 W problem</td></tr>
+            <tr><td>Display flickers under load</td><td>Cable quality, then try the other USB-C port</td></tr>
+            <tr><td>No audio on TV</td><td>Sound output device — it doesn't follow the display</td></tr>
+            <tr><td>Slower than handheld</td><td>Docked profile active, and not overridden per-game</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="check" data-check>
+        <div class="check-h">Done when <span class="count"></span></div>
+        <ul>
+          <li><label><input type="checkbox" id="c8a"><span>Dock on the USB4 port</span></label></li>
+          <li><label><input type="checkbox" id="c8b"><span>Ultra High Speed HDMI cable in use</span></label></li>
+          <li><label><input type="checkbox" id="c8c"><span>100 W charger, or confirmed no throttling on 65 W</span></label></li>
+          <li><label><input type="checkbox" id="c8d"><span>Refresh rate verified, not assumed</span></label></li>
+          <li><label><input type="checkbox" id="c8e"><span>Audio routes to the TV</span></label></li>
+          <li><label><input type="checkbox" id="c8f"><span>Docking requires no manual setup steps</span></label></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 09 -->
+    <section class="phase" id="p9">
+      <div class="phase-head"><span class="phase-n">09</span><h2>Storage and library</h2></div>
+      <div class="chips"><span class="chip">~30 min</span><span class="chip risk-none">No risk</span></div>
+
+      <div class="note">
+        <span class="note-label">Good news specific to your device</span>
+        <p>The original ROG Ally had a notorious problem: its microSD reader sat beside the exhaust
+          vent and sustained heat killed cards. <strong>The Ally X relocated the reader.</strong> Most
+          advice warning you off microSD predates your hardware.</p>
+      </div>
+
+      <p>Get a <strong>UHS-II</strong> card — the reader supports it, and it's roughly double the
+        sequential read of UHS-I in practice. 512 GB or 1 TB, V60/V90, from a retailer you trust.
+        <strong>Verify it with H2testw or F3 when it arrives</strong> — counterfeits report the right
+        capacity and corrupt data past their real size, and you'd rather know before installing 200 GB.</p>
+
+      <div class="tw">
+        <table>
+          <thead><tr><th>Tier</th><th>What goes here</th></tr></thead>
+          <tbody>
+            <tr><td class="prof">Internal NVMe</td><td>Current main game, open-world titles that stream assets continuously, competitive games where load times matter</td></tr>
+            <tr><td class="prof">microSD</td><td>Backlog, indie, emulation, 2D, older titles, anything you play occasionally</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Rule of thumb: if it stutters when you move fast through a big world, it belongs on the NVMe.</p>
+
+      <p>Add the card as a Steam library folder, and use <strong>Steam → Settings → Storage →
+        Move</strong> to relocate installed games without re-downloading. Never move game folders in
+        Explorer — Steam loses track and forces a full re-download. Keep at least
+        <strong>10 % of the internal drive free</strong>; NVMe drives slow measurably when nearly full.</p>
+
+      <div class="check" data-check>
+        <div class="check-h">Done when <span class="count"></span></div>
+        <ul>
+          <li><label><input type="checkbox" id="c9a"><span>microSD installed and verified genuine</span></label></li>
+          <li><label><input type="checkbox" id="c9b"><span>Added as a Steam library folder</span></label></li>
+          <li><label><input type="checkbox" id="c9c"><span>Games distributed sensibly between tiers</span></label></li>
+          <li><label><input type="checkbox" id="c9d"><span>10 % free on internal drive</span></label></li>
+          <li><label><input type="checkbox" id="c9e"><span>Non-cloud saves backed up</span></label></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section class="phase" id="p10">
+      <div class="phase-head"><span class="phase-n">10</span><h2>Accessories</h2></div>
+      <div class="chips"><span class="chip">Shopping</span><span class="chip">External only</span></div>
+
+      <h4>Buy</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Item</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td class="prof">100 W GaN charger</td><td>Highest impact per pound. Fixes a problem you may not have diagnosed yet, and it's smaller than the ASUS brick</td></tr>
+            <tr><td class="prof">Dock</td><td>HDMI 2.1, 100 W passthrough, Gigabit Ethernet, vent clearance</td></tr>
+            <tr><td class="prof">HDMI 2.1 cable</td><td>Cheap, and the usual cause of "won't do 120 Hz"</td></tr>
+            <tr><td class="prof">UHS-II microSD</td><td>512 GB–1 TB. Verify it isn't counterfeit</td></tr>
+            <tr><td class="prof">Case</td><td>Large glass panel, exposed stick tops. Look for a stick divider</td></tr>
+            <tr><td class="prof">Screen protector</td><td>Tempered glass — check the listing says <em>Ally X</em>, dimensions differ from the original</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Consider</h4>
+      <p>A <strong>controller</strong> for docked play (Xbox pads just work; DualSense works well with
+        Steam Input). A <strong>cooling stand</strong> if you play long docked sessions in a warm room —
+        redundant if your dock has a fan, and not worth the bulk handheld. A <strong>65 W+ power
+        bank</strong> for travel; note the 80 Wh internal battery means a 20,000 mAh bank is roughly one
+        extra charge, and check airline limits.</p>
+
+      <div class="dont">
+        <h4>Skip</h4>
+        <ul>
+          <li>"Gaming" microSD cards at a premium — UHS-II is what matters, not branding</li>
+          <li>Anything advertising 8K on a device that shouldn't render 4K</li>
+          <li>Thermal pads and paste — outside your constraints, and stock cooling is competent</li>
+          <li>Privacy filters — they cut brightness on a panel that needs all of it outdoors</li>
+          <li>Docks without PD passthrough, and cheap unbranded hubs (where flaky dock behavior lives)</li>
+        </ul>
+      </div>
+
+      <div class="note key">
+        <span class="note-label">If you only buy two things</span>
+        <p>The <strong>100 W charger</strong> and the <strong>HDMI 2.1 cable</strong>. Together they cost
+          very little and eliminate the two most common docked problems — problems that otherwise
+          present as vague performance complaints you'd spend an evening chasing through software.</p>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section class="phase" id="p11">
+      <div class="phase-head"><span class="phase-n">11</span><h2>Validation</h2></div>
+      <div class="chips"><span class="chip">~1 hr</span><span class="chip risk-none">No risk</span><span class="chip">+ overnight test</span></div>
+
+      <p>Everything above is a claim until you measure it. This is what turns the guide from "things I
+        read on the internet" into "things I verified on my device" — and tells you which changes
+        actually did something for <em>your</em> library.</p>
+
+      <p>Repeat the Phase 1 benchmark under identical conditions. <strong>1 % lows are the number that
+        matters most</strong> — average FPS is what marketing quotes; 1 % lows are what you feel. Frame
+        pacing gains from fan curves and drivers show up here while barely moving the average.</p>
+
+      <div class="note caution">
+        <span class="note-label">Be honest with yourself</span>
+        <p>The Windows-side changes are worth a modest but real improvement, not a transformation. <strong>If
+          you see a dramatic jump, suspect your methodology before you celebrate</strong> — check both
+          runs used the same preset and that the first wasn't thermally throttled.</p>
+      </div>
+
+      <p>Then the battery comparison that usually changes how people play: same game, 30 minutes on
+        Handheld Default, versus 30 minutes <strong>capped at 40 fps with FSR Quality at 900p</strong>.</p>
+
+      <p>And the standby test — the measurement nobody does. With hibernate configured, the overnight
+        drop should be essentially <strong>zero</strong> against whatever you recorded in Phase 1.</p>
+
+      <h4>Results</h4>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Metric</th><th>Baseline</th><th>After</th></tr></thead>
+          <tbody>
+            <tr><td>Avg FPS · 1080p native, Turbo</td><td class="num">—</td><td class="num">—</td></tr>
+            <tr><td>1 % low FPS</td><td class="num">—</td><td class="num">—</td></tr>
+            <tr><td>Peak CPU / GPU temp</td><td class="num">—</td><td class="num">—</td></tr>
+            <tr><td>Package power, avg</td><td class="num">—</td><td class="num">—</td></tr>
+            <tr><td>Battery % · 30 min, Handheld Default</td><td class="num">—</td><td class="num">—</td></tr>
+            <tr><td>Battery % · 30 min, 900p/FSR/40 cap</td><td class="num">—</td><td class="num">—</td></tr>
+            <tr><td><strong>Overnight standby drain %</strong></td><td class="num">—</td><td class="num">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>If something got worse</h4>
+      <p>Work backward, most likely first: <strong>driver swap</strong> (roll back with DDU) →
+        <strong>fan curve too quiet</strong> causing throttling → <strong>a per-game profile
+        overriding</strong> the one you think is active → <strong>VRAM forced</strong> when Auto was
+        fine → <strong>frame generation</strong> enabled where it doesn't belong. Change one thing at a
+        time and re-measure. This is exactly why Phase 1 exists.</p>
+
+      <div class="check" data-check>
+        <div class="check-h">Done when <span class="count"></span></div>
+        <ul>
+          <li><label><input type="checkbox" id="c11a"><span>Benchmark re-run and compared</span></label></li>
+          <li><label><input type="checkbox" id="c11b"><span>Battery test re-run and compared</span></label></li>
+          <li><label><input type="checkbox" id="c11c"><span>Capped/upscaled comparison recorded</span></label></li>
+          <li><label><input type="checkbox" id="c11d"><span>Overnight standby re-tested</span></label></li>
+          <li><label><input type="checkbox" id="c11e"><span>Docked chain verified end to end</span></label></li>
+          <li><label><input type="checkbox" id="c11f"><span>Nothing regressed after a reboot</span></label></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <p>Built for an ASUS ROG Ally X (2024) on Windows 11. Progress is saved in this browser only.</p>
+  <p>The Z1 Extreme is a 12-CU integrated GPU in a 7″ chassis running between 10 and 30 watts. Tuning
+    buys you better frame pacing, longer sessions, quieter operation, and a device that stops feeling
+    like a laptop wearing a controller. It does not turn it into a desktop — treat any guide promising
+    otherwise with suspicion, including the parts of this one that sound too good. Which is why
+    Phase 11 has you measure.</p>
+</footer>
+
+<script>
+(function () {
+  var KEY = "allyx-runbook-v1";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.check input[type="checkbox"]'));
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { saved = {}; }
+
+  var fill = document.getElementById("pfill");
+  var count = document.getElementById("pcount");
+
+  function updateCounts() {
+    document.querySelectorAll("[data-check]").forEach(function (blk) {
+      var inputs = blk.querySelectorAll('input[type="checkbox"]');
+      var done = blk.querySelectorAll('input[type="checkbox"]:checked').length;
+      var el = blk.querySelector(".count");
+      if (el) el.textContent = done + "/" + inputs.length;
+    });
+    var total = boxes.length;
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    if (fill) fill.style.width = (total ? (done / total) * 100 : 0) + "%";
+    if (count) count.textContent = done + "/" + total;
+  }
+
+  boxes.forEach(function (b) {
+    if (saved[b.id]) b.checked = true;
+    b.addEventListener("change", function () {
+      saved[b.id] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+      updateCounts();
+    });
+  });
+  updateCounts();
+
+  // scrollspy
+  var links = Array.prototype.slice.call(document.querySelectorAll("#railnav a"));
+  var sections = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
+
+  function spy() {
+    var best = 0;
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i] && sections[i].getBoundingClientRect().top <= 120) best = i;
+    }
+    links.forEach(function (a, i) { a.classList.toggle("active", i === best); });
+  }
+  window.addEventListener("scroll", spy, { passive: true });
+  spy();
+})();
+</script>
