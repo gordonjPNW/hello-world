@@ -149,10 +149,10 @@ was the single biggest source of confusion during setup.
 
 | | Handheld | Docked |
 |---|---|---|
-| Display | Internal panel, 1920×1080 | TV over dock, 60 Hz |
+| Display | Internal panel, 1920×1080, 7" | Alienware 32" curved, 3840×2160 |
 | Refresh | **120 Hz** (confirmed) | 59/60 Hz only — set **60**, not 59 |
-| Game resolution | 1080p native | **1080p**, let the TV upscale |
-| Frame cap | **40 fps** | **30 or 60** unless the TV has VRR |
+| Game resolution | 1080p native + FSR | **1080p** (integer-scales to 4K) |
+| Frame cap | **40 fps** | **30 or 60** until VRR is working |
 
 ### Handheld: 120 Hz, cap 40
 
@@ -164,6 +164,19 @@ mean rendering 120 fps — it gives VRR a window to work in. At a 40 fps cap, LF
 is zero, since the frame count is unchanged. That is the whole trade: ~1 W buys clean
 pacing at the cap you actually want to run.
 
+**Set games to 1080p, never 720p.** 720p on a 1080p panel is 1.5× scaling — non-integer,
+so every pixel gets interpolated and the whole image softens, HUD and subtitles included.
+
+To buy performance back, use **in-game FSR** instead. FSR Quality renders at roughly 720p
+internally — the same GPU saving — but reconstructs to 1080p and composites the UI at
+native resolution. Sharper result for the same cost. Balanced next if Quality is not
+enough; at 7 inches there is a lot of headroom before upscaling becomes visible.
+
+Try settings before upscaling, though. The expensive knobs are not resolution — in
+Spider-Man they are ray tracing (confirm it is off), shadow quality, and crowd/traffic
+density. High → Medium on those usually buys more than a resolution step and costs less
+visually on a small screen.
+
 ### Docked: run games at 1080p
 
 **The desktop was found at 3840×2160.** At 30 W a Z1 Extreme is not a 4K device, and games
@@ -171,8 +184,35 @@ default to the desktop resolution — Spider-Man at native 4K would be unplayabl
 how well the TDP profile is tuned. 4K is 4× the pixels of 1080p on a handheld APU, so this
 matters more than every wattage decision in this document combined.
 
-Set games to 1080p docked and let the TV upscale. Try 1440p only for lighter titles, and
-only with headroom to spare.
+1080p is exactly half of 3840×2160 in each dimension, so it **integer-scales with no
+interpolation softness**. 1440p into 4K is non-integer and looks mushier by comparison —
+1080p may well look better despite being fewer pixels. Prefer it.
+
+### The monitor and the dock
+
+Display is an **Alienware 32" curved**, running 3840×2160 — most likely the AW3225QF
+(4K 240 Hz QD-OLED), which supports FreeSync Premium Pro and G-Sync Compatible over
+HDMI 2.1 and DisplayPort. **VRR is available on this panel.** It is not reaching the Ally.
+
+The dock is the suspect, and the evidence is stronger than a simple bandwidth ceiling:
+
+- 4K capped at 60 Hz alone would just mean an HDMI 2.0 link.
+- But **1920×1080 also offered only `59, 60`**, and 1080p60 is trivial bandwidth. A 2.0
+  link would happily offer 1080p at 120/144/240.
+
+That pattern points at a DisplayLink-class dock — compressed video over USB, typically
+60 Hz regardless of resolution — or the monitor's EDID not surviving the trip through the
+dock.
+
+**Test before buying anything:** run a USB-C to DisplayPort cable straight from the Ally X
+to the monitor, bypassing the dock. The USB-C port does DP alt mode at full bandwidth. If
+the supported list fills with high refresh rates, the dock is confirmed and you know what
+to replace. If it still reads 59/60, the problem is elsewhere and a new dock would have
+been wasted money.
+
+If VRR does come up, the two configurations largely converge: cap docked at 40 like
+handheld, and the 30-or-60 judder workaround goes away entirely. Game resolution stays at
+1080p either way, because 30 W is 30 W.
 
 ### Why 40 fps needs 120 Hz
 
@@ -182,12 +222,8 @@ caps at 60 Hz are 30 and 60.** That is why the docked row above reads 30 or 60, 
 panel that silently reverts to 60 Hz means dropping the cap to 30 rather than running 40
 badly paced.
 
-Docked at 30 fps, also make sure the TV is at **60 Hz and not 59** — 59.94 does not divide
-cleanly into 30 and produces a slow pacing drift.
-
-If the TV supports VRR or FreeSync over HDMI and it is enabled at both ends, 40 fps works
-docked too. Unverified. A HDMI 2.0 dock link would also cap the TV at 4K60 and is worth
-ruling out.
+Docked at 30 fps, also make sure the monitor is at **60 Hz and not 59** — 59.94 does not
+divide cleanly into 30 and produces a slow pacing drift.
 
 Set caps in AMD Adrenalin → Frame Rate Target Control, or in-game where available.
 
@@ -255,8 +291,8 @@ to target one explicitly, so it cannot silently address the TV.
       display-change is the fix.
 - [ ] Set the 40 fps cap in Adrenalin → Frame Rate Target Control.
 - [ ] Set games to 1080p when docked. Currently the desktop runs 4K.
-- [ ] Determine whether the TV supports VRR/FreeSync over HDMI, and whether the dock link
-      is HDMI 2.0 or 2.1. Decides the docked frame cap between 40 and 30/60.
+- [ ] Identify the dock. Run the USB-C → DisplayPort direct-cable test to confirm whether
+      it is the bottleneck. Decides the docked frame cap between 40 and 30/60.
 - [ ] Confirm the Docked fan curve survived the power-source context switch.
 - [ ] Confirm the battery profiles still read as set — Handheld AAA at 17/20/25.
 - [ ] Confirm whether a `Fan 2` curve exists and mirror it.
