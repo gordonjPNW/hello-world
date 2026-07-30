@@ -183,9 +183,28 @@ number above as a validated starting point rather than a final answer.
 - **Memory Integrity is off** — worth the most in CPU-bound titles like Planet Zoo.
 - **Power mode synchronization** is ON, syncing Windows power modes to the Armoury Crate
   Operating Mode.
-- Display set to **120 Hz** via `set-refresh-rate.ps1 -Rate 120`. This is now the standing
-  setting for handheld as well as docked, not a docked-only switch — the 40 fps cap needs
-  the VRR window.
+- Display set to **120 Hz**. This is now the standing setting for handheld as well as
+  docked, not a docked-only switch — the 40 fps cap needs the VRR window.
+
+  ```powershell
+  & "C:\Users\gordo\Documents\Claude\set-refresh-rate.ps1" -Rate 120
+  ```
+
+  The script is not on `PATH`, so it needs the full path and the call operator. If
+  execution policy blocks it:
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File "C:\Users\gordo\Documents\Claude\set-refresh-rate.ps1" -Rate 120
+  ```
+
+  Verify rather than trusting a silent success:
+
+  ```powershell
+  Get-CimInstance Win32_VideoController | Select-Object Name, CurrentRefreshRate
+  ```
+
+  Refresh rate can also be set from Armoury Crate SE Command Center, or Windows
+  Settings → System → Display → Advanced display.
 
 ## Open items
 
