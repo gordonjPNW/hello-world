@@ -42,11 +42,15 @@ Those floors and ceilings are the main correction to the original plan: SPL cann
 | **Efficient**    | 10  | 15   | 15   | Indies, 2D, emulation up to PS2/GameCube |
 | **Cloud**        | 7   | 15   | 15   | Game Pass streaming, Moonlight |
 
-### Unresolved: the SPL ceiling on AC
+### The SPL ceiling on AC
 
-SPL was reported as accepting 30 W while plugged in, then later measured as capping at
-25 W. Not settled. Re-check in the plugged-in context — if 30 W takes, run Docked at
-**30 / 30 / 35** instead.
+The 7–25 / 15–30 / 15–35 ranges above are the **on-battery** ceilings. Docked appears to
+be editable only while actually plugged in, and the ceilings rise in that context.
+
+So Docked at 25/30/35 is a floor, not a target. Read the actual maxima off the sliders
+while on AC and take what they give — if SPL reaches 30, run **30 / 33 / 38** as the
+original plan intended, and Docked becomes a genuine gain over stock Turbo again rather
+than a fan-curve-only profile.
 
 ## Why these numbers
 
@@ -163,9 +167,22 @@ number above as a validated starting point rather than a final answer.
 
 ## Open items
 
-- [ ] Confirm whether SPL accepts 30 W in the plugged-in context.
+- [x] Fan curve is **per-profile**. Curves set on Handheld AAA and Docked. Efficient and
+      Cloud left stock — they never reach the 60–80 °C band.
+- [ ] Read the real SPL/sPPT/fPPT maxima off the Docked profile while plugged in and
+      raise Docked to whatever they allow.
 - [ ] Confirm whether a `Fan 2` curve exists and mirror it.
-- [ ] Confirm whether the fan curve is per-profile or global. If per-profile, only
-      Handheld AAA and Docked need the edit — Efficient and Cloud never reach the
-      60–80 °C band.
-- [ ] Run the 20-minute validation at 17 W.
+- [ ] Run the 20-minute validation at 17 W. **Do this before enabling any of the phase 2
+      software features below** — frame generation or a second frame cap layered on top
+      will make clock behavior unreadable.
+
+## Phase 2 — not yet configured
+
+Radeon Super Chill, frame generation, upscaling, and the remaining Armoury Crate
+settings. Note before starting:
+
+- **Super Chill and Frame Rate Target Control both cap framerate.** Running both invites
+  them to fight. Pick one as the cap and leave the other off.
+- **Frame generation changes what the validation test measures.** Generated frames do not
+  load the GPU the way rendered ones do, so a clock-hold result gathered with frame gen on
+  says nothing about the 17 W profile itself.
