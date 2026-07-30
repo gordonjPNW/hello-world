@@ -144,10 +144,20 @@ thinking about TDP entirely.
 
 ## Frame rate caps
 
-Display is currently at **60 Hz**, VRR window **60–120 Hz**.
+**Panel at 120 Hz, cap at 40 fps.** VRR window is 60–120 Hz.
 
-Cap at **40 fps or below**. A 40 fps cap sits comfortably inside the VRR window and cuts
-GPU power hard. A 50 fps cap does **not** work well at 60 Hz output.
+Refresh rate and framerate are separate settings. Running the panel at 120 Hz does not
+mean rendering 120 fps — it gives VRR a window to work in. At a 40 fps cap, LFC doubles to
+80 Hz, which lands inside the VRR window and paces cleanly.
+
+At 60 Hz output the VRR window has no room, and a 40 fps cap means 1.5 refreshes per
+frame — a 1-2-1-2 alternating pattern, which is visible judder. **The only cleanly paced
+caps at 60 Hz are 30 and 60.** If the panel ever goes back to 60 Hz, drop the cap to 30
+rather than running 40 badly paced.
+
+120 Hz costs roughly 0.5–1 W of display power, about 5% of the 17 W budget. The GPU cost
+is zero, since the frame count is unchanged. That is the whole trade: ~1 W buys clean
+pacing at the cap you actually want to run.
 
 Set caps in AMD Adrenalin → Frame Rate Target Control, or in-game where available.
 
@@ -173,13 +183,18 @@ number above as a validated starting point rather than a final answer.
 - **Memory Integrity is off** — worth the most in CPU-bound titles like Planet Zoo.
 - **Power mode synchronization** is ON, syncing Windows power modes to the Armoury Crate
   Operating Mode.
-- Display is at **60 Hz**; use `set-refresh-rate.ps1 -Rate 120` when docked.
+- Display set to **120 Hz** via `set-refresh-rate.ps1 -Rate 120`. This is now the standing
+  setting for handheld as well as docked, not a docked-only switch — the 40 fps cap needs
+  the VRR window.
 
 ## Open items
 
 - [x] Fan curve is **per-profile**. Curves set on Handheld AAA and Docked. Efficient and
       Cloud left stock — they never reach the 60–80 °C band.
 - [x] AC ceilings measured: SPL 30, sPPT 43, fPPT 53. Docked set to 30 / 40 / 50.
+- [ ] Set the panel to 120 Hz (`set-refresh-rate.ps1 -Rate 120`) and confirm it persists
+      across a sleep/wake and an undock.
+- [ ] Set the 40 fps cap in Adrenalin → Frame Rate Target Control.
 - [ ] Confirm the Docked fan curve survived the power-source context switch.
 - [ ] Confirm the battery profiles still read as set — Handheld AAA at 17/20/25.
 - [ ] Confirm whether a `Fan 2` curve exists and mirror it.
