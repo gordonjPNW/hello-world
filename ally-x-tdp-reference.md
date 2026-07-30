@@ -142,22 +142,52 @@ thinking about TDP entirely.
 | Anything 2D / indie | Efficient (10W) |
 | Cloud / streamed | Cloud (7W) |
 
-## Frame rate caps
+## Display and frame rate caps
 
-**Panel at 120 Hz, cap at 40 fps.** VRR window is 60–120 Hz.
+There are **two display configurations**, and they take different caps. Conflating them
+was the single biggest source of confusion during setup.
+
+| | Handheld | Docked |
+|---|---|---|
+| Display | Internal panel, 1920×1080 | TV over dock, 60 Hz |
+| Refresh | **120 Hz** (confirmed) | 59/60 Hz only — set **60**, not 59 |
+| Game resolution | 1080p native | **1080p**, let the TV upscale |
+| Frame cap | **40 fps** | **30 or 60** unless the TV has VRR |
+
+### Handheld: 120 Hz, cap 40
 
 Refresh rate and framerate are separate settings. Running the panel at 120 Hz does not
 mean rendering 120 fps — it gives VRR a window to work in. At a 40 fps cap, LFC doubles to
-80 Hz, which lands inside the VRR window and paces cleanly.
-
-At 60 Hz output the VRR window has no room, and a 40 fps cap means 1.5 refreshes per
-frame — a 1-2-1-2 alternating pattern, which is visible judder. **The only cleanly paced
-caps at 60 Hz are 30 and 60.** If the panel ever goes back to 60 Hz, drop the cap to 30
-rather than running 40 badly paced.
+80 Hz, which lands inside the 60–120 Hz VRR window and paces cleanly.
 
 120 Hz costs roughly 0.5–1 W of display power, about 5% of the 17 W budget. The GPU cost
 is zero, since the frame count is unchanged. That is the whole trade: ~1 W buys clean
 pacing at the cap you actually want to run.
+
+### Docked: run games at 1080p
+
+**The desktop was found at 3840×2160.** At 30 W a Z1 Extreme is not a 4K device, and games
+default to the desktop resolution — Spider-Man at native 4K would be unplayable no matter
+how well the TDP profile is tuned. 4K is 4× the pixels of 1080p on a handheld APU, so this
+matters more than every wattage decision in this document combined.
+
+Set games to 1080p docked and let the TV upscale. Try 1440p only for lighter titles, and
+only with headroom to spare.
+
+### Why 40 fps needs 120 Hz
+
+At 60 Hz output the VRR window has no room, and a 40 fps cap means 1.5 refreshes per
+frame — a 1-2-1-2 alternating pattern, which is visible judder. **The only cleanly paced
+caps at 60 Hz are 30 and 60.** That is why the docked row above reads 30 or 60, and why a
+panel that silently reverts to 60 Hz means dropping the cap to 30 rather than running 40
+badly paced.
+
+Docked at 30 fps, also make sure the TV is at **60 Hz and not 59** — 59.94 does not divide
+cleanly into 30 and produces a slow pacing drift.
+
+If the TV supports VRR or FreeSync over HDMI and it is enabled at both ends, 40 fps works
+docked too. Unverified. A HDMI 2.0 dock link would also cap the TV at 4K60 and is worth
+ruling out.
 
 Set caps in AMD Adrenalin → Frame Rate Target Control, or in-game where available.
 
@@ -183,37 +213,50 @@ number above as a validated starting point rather than a final answer.
 - **Memory Integrity is off** — worth the most in CPU-bound titles like Planet Zoo.
 - **Power mode synchronization** is ON, syncing Windows power modes to the Armoury Crate
   Operating Mode.
-- Display set to **120 Hz**. This is now the standing setting for handheld as well as
-  docked, not a docked-only switch — the 40 fps cap needs the VRR window.
+- Internal panel confirmed at **120 Hz**.
 
-  ```powershell
-  & "C:\Users\gordo\Documents\Claude\set-refresh-rate.ps1" -Rate 120
-  ```
+### Setting refresh rate
 
-  The script is not on `PATH`, so it needs the full path and the call operator. If
-  execution policy blocks it:
+```powershell
+powershell -ExecutionPolicy Bypass -File "C:\Users\gordo\Documents\Claude\set-refresh-rate.ps1" -Rate 120
+```
 
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File "C:\Users\gordo\Documents\Claude\set-refresh-rate.ps1" -Rate 120
-  ```
+Two gotchas, both of which cost time during setup:
 
-  Verify rather than trusting a silent success:
+1. **The script is not on `PATH`.** Calling it by bare name fails with
+   `CommandNotFoundException`. It needs the full path.
+2. **Execution policy blocks it** as an unsigned local script, so the
+   `-ExecutionPolicy Bypass` form above is the one that works. The call operator (`&`)
+   with a quoted path does not get past this.
 
-  ```powershell
-  Get-CimInstance Win32_VideoController | Select-Object Name, CurrentRefreshRate
-  ```
+**The script targets whichever display is primary.** While docked that is the TV, so it
+will report the TV's modes and refuse 120 Hz — this looked like a failure but was the
+script doing the right thing to the wrong display. **Undock before setting the panel
+to 120 Hz.**
 
-  Refresh rate can also be set from Armoury Crate SE Command Center, or Windows
-  Settings → System → Display → Advanced display.
+Read the supported list to tell which display you are on: `59, 60` is the TV, a list
+containing 120 is the internal panel.
+
+Refresh rate can also be set from Armoury Crate SE Command Center, or Windows
+Settings → System → Display → Advanced display.
+
+Possible improvement: extend the script with `-List` to enumerate displays and `-Display N`
+to target one explicitly, so it cannot silently address the TV.
 
 ## Open items
 
 - [x] Fan curve is **per-profile**. Curves set on Handheld AAA and Docked. Efficient and
       Cloud left stock — they never reach the 60–80 °C band.
 - [x] AC ceilings measured: SPL 30, sPPT 43, fPPT 53. Docked set to 30 / 40 / 50.
-- [ ] Set the panel to 120 Hz (`set-refresh-rate.ps1 -Rate 120`) and confirm it persists
-      across a sleep/wake and an undock.
+- [x] Internal panel set to **120 Hz** and confirmed.
+- [ ] Confirm 120 Hz survives a sleep/wake and a dock/undock cycle. Windows renegotiates
+      the display mode on both, and Armoury Crate has been known to force 60 Hz on an
+      operating mode change. If it does not persist, a scheduled task on unlock or
+      display-change is the fix.
 - [ ] Set the 40 fps cap in Adrenalin → Frame Rate Target Control.
+- [ ] Set games to 1080p when docked. Currently the desktop runs 4K.
+- [ ] Determine whether the TV supports VRR/FreeSync over HDMI, and whether the dock link
+      is HDMI 2.0 or 2.1. Decides the docked frame cap between 40 and 30/60.
 - [ ] Confirm the Docked fan curve survived the power-source context switch.
 - [ ] Confirm the battery profiles still read as set — Handheld AAA at 17/20/25.
 - [ ] Confirm whether a `Fan 2` curve exists and mirror it.
