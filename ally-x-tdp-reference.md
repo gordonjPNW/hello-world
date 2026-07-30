@@ -24,33 +24,43 @@ clamped.
 
 Sliders read as **`value/max`** — `16/25W` means 16W set, 25W ceiling.
 
-| Field | Full name | Range | What it controls |
-|-------|-----------|-------|------------------|
-| SPL   | Sustained Power Limit | **7–25 W** | Long-run wattage. The one that matters most. |
-| sPPT  | Slow Package Power Tracking | **15–30 W** | Medium bursts, ~seconds. |
-| fPPT  | Fast Package Power Tracking | **15–35 W** | Short spikes, ~milliseconds. |
+**Ceilings depend on power source.** Measured:
 
-Those floors and ceilings are the main correction to the original plan: SPL cannot reach
-30 W, and sPPT/fPPT cannot go below 15 W.
+| Field | Full name | On battery | Plugged in | What it controls |
+|-------|-----------|-----------|-----------|------------------|
+| SPL   | Sustained Power Limit | 7–**25** W | 7–**30** W | Long-run wattage. The one that matters most. |
+| sPPT  | Slow Package Power Tracking | 15–**30** W | 15–**43** W | Medium bursts, ~seconds. |
+| fPPT  | Fast Package Power Tracking | 15–**35** W | 15–**53** W | Short spikes, ~milliseconds. |
+
+The 15 W floor on sPPT/fPPT is the main correction to the original plan — it applies in
+both contexts and makes the planned Cloud and Efficient burst values unreachable.
+
+Docked is editable only while actually plugged in.
 
 ## The four profiles
 
 | Profile          | SPL | sPPT | fPPT | Use for |
 |------------------|-----|------|------|---------|
-| **Docked**       | 25  | 30   | 35   | Plugged in, TV or monitor |
+| **Docked**       | 30  | 40   | 50   | Plugged in, TV or monitor |
 | **Handheld AAA** | 17  | 20   | 25   | Modern games on battery |
 | **Efficient**    | 10  | 15   | 15   | Indies, 2D, emulation up to PS2/GameCube |
 | **Cloud**        | 7   | 15   | 15   | Game Pass streaming, Moonlight |
 
-### The SPL ceiling on AC
+### Why Docked runs 30 / 40 / 50
 
-The 7–25 / 15–30 / 15–35 ranges above are the **on-battery** ceilings. Docked appears to
-be editable only while actually plugged in, and the ceilings rise in that context.
+SPL 30 is the AC ceiling and the only number that sets sustained performance, so it is not
+a choice.
 
-So Docked at 25/30/35 is a floor, not a target. Read the actual maxima off the sliders
-while on AC and take what they give — if SPL reaches 30, run **30 / 33 / 38** as the
-original plan intended, and Docked becomes a genuine gain over stock Turbo again rather
-than a fan-curve-only profile.
+sPPT and fPPT are set above the original plan's 33/38 but below the available 43/53. The
+extra headroom smooths frame times through load transients — traversal, district
+streaming, shader compilation — in the seconds-and-below window. It does not raise average
+framerate, which is SPL-bound. The cost is heat spikes and fan noise, which is cheap while
+plugged in with a corrected fan curve.
+
+Going all the way to 43/53 is not worth it; the return flattens well before the ceiling
+and you pay full noise for nothing measurable. If the fan is intrusive while docked, drop
+to 30/33/38 — the framerate loss is negligible. These two values are a smoothness dial,
+not a performance one.
 
 ## Why these numbers
 
@@ -65,12 +75,12 @@ roughly 4–5 hours versus about 2 at 17 W.
 
 ### What Docked is actually for
 
-The original plan justified Docked as a gain over stock Turbo's 25 W on AC. With SPL
-capped at 25 W, **Docked matches Turbo on sustained power** — it is not a wattage gain.
+30 W on AC against stock Turbo's 25 W, so Docked is a genuine sustained-power gain rather
+than a placebo — plus the raised fan curve and the wider burst limits on top.
 
-Keep it anyway, but for the right reason: it carries the raised fan curve and the wider
-burst limits. Per the logic below, a Turbo-wattage profile with better cooling is the
-more useful thing regardless.
+Per the curve above, 25 W → 30 W is the flattest stretch of the whole range: maybe 5–8%
+for 20% more power and a much louder fan. Worth taking while plugged in, where neither
+cost matters. Never worth chasing on battery.
 
 ### Why the sPPT/fPPT floor costs nothing
 
@@ -169,8 +179,9 @@ number above as a validated starting point rather than a final answer.
 
 - [x] Fan curve is **per-profile**. Curves set on Handheld AAA and Docked. Efficient and
       Cloud left stock — they never reach the 60–80 °C band.
-- [ ] Read the real SPL/sPPT/fPPT maxima off the Docked profile while plugged in and
-      raise Docked to whatever they allow.
+- [x] AC ceilings measured: SPL 30, sPPT 43, fPPT 53. Docked set to 30 / 40 / 50.
+- [ ] Confirm the Docked fan curve survived the power-source context switch.
+- [ ] Confirm the battery profiles still read as set — Handheld AAA at 17/20/25.
 - [ ] Confirm whether a `Fan 2` curve exists and mirror it.
 - [ ] Run the 20-minute validation at 17 W. **Do this before enabling any of the phase 2
       software features below** — frame generation or a second frame cap layered on top
