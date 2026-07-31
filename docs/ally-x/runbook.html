@@ -643,7 +643,14 @@ powercfg /setactive SCHEME_CURRENT</pre>
         your runtime, meaningfully slows capacity loss. Lift it before a trip. If you're mostly away
         from power, this is the wrong trade — use the full charge and accept the wear.</p>
 
-      <h4>Expected runtime · 80 Wh</h4>
+      <h4>Expected runtime · 80 Wh, under game load</h4>
+      <div class="note">
+        <span class="note-label">Why these look low</span>
+        <p>TDP is the <em>APU's</em> budget, not the system's — display, fans, SSD, and radios add
+          roughly 5–8 W on top. A "15 W" profile really pulls 21–23 W, which is why 80 Wh ÷ 15 W =
+          5.3 hours on paper but ~3.5 in practice. Figures quoting 5–6 hours at 15 W are measuring
+          light load, not gaming.</p>
+      </div>
       <div class="tw">
         <table>
           <thead><tr><th>Profile</th><th>TDP</th><th>Runtime</th><th>Typical use</th></tr></thead>
@@ -698,19 +705,37 @@ powercfg /setactive SCHEME_CURRENT</pre>
         average looks fine.</p>
 
       <h3>Set all three power limits, not just one</h3>
+      <p>They differ in <strong>how long each limit applies</strong>, not just how high:</p>
       <div class="tw">
         <table>
-          <thead><tr><th>Value</th><th>Controls</th><th>Set to</th></tr></thead>
+          <thead><tr><th>Value</th><th>Applies for</th><th>Slider range</th></tr></thead>
           <tbody>
-            <tr><td class="prof">SPL</td><td>Sustained power limit — your actual target</td><td class="num">The table number</td></tr>
-            <tr><td class="prof">sPPT</td><td>Short-term boost</td><td class="num">SPL + 2–3 W</td></tr>
-            <tr><td class="prof">fPPT</td><td>Instantaneous spikes</td><td class="num">SPL + 4–5 W</td></tr>
+            <tr><td class="prof">SPL</td><td>Indefinitely — the real ceiling</td><td class="num">7–30 W</td></tr>
+            <tr><td class="prof">sPPT</td><td>~30 s to a couple of minutes</td><td class="num">15–43 W</td></tr>
+            <tr><td class="prof">fPPT</td><td>~5–10 s bursts</td><td class="num">15–53 W</td></tr>
           </tbody>
         </table>
       </div>
-      <p>Handheld Default becomes <strong>17 / 20 / 22</strong>. Setting all three equal is a common
-        mistake — it flattens boost response and makes the device feel sluggish in menus and during
-        level loads.</p>
+      <div class="note caution">
+        <span class="note-label">Note the floors</span>
+        <p>sPPT and fPPT <strong>cannot go below 15 W</strong>, whatever SPL is. At SPL 10 W you can't
+          set a boost limit "2 W above" — leave both at 15 W and let the floor do its job.</p>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Profile</th><th>SPL</th><th>sPPT</th><th>fPPT</th></tr></thead>
+          <tbody>
+            <tr><td class="prof">Battery Sipper</td><td class="num">10–13</td><td class="num">15</td><td class="num">15</td></tr>
+            <tr><td class="prof">Handheld Default</td><td class="num">17</td><td class="num">20</td><td class="num">22</td></tr>
+            <tr><td class="prof">Handheld Max</td><td class="num">25</td><td class="num">28</td><td class="num">30</td></tr>
+            <tr><td class="prof">Docked</td><td class="num">30</td><td class="num">33</td><td class="num">35</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Setting all three equal where you <em>can</em> flattens boost response and makes the device
+        feel sluggish in menus and during loading. <strong>30 W is plugged-in only</strong> — on
+        battery the ceiling is 25 W, so the Docked profile silently behaves as Handheld Max if you
+        undock without switching.</p>
 
       <h3>Fan curves</h3>
       <p>The stock curve is conservative until it abruptly isn't: it stays quiet, lets temperature

@@ -130,8 +130,13 @@ long it lasted, drain rate, and — most usefully — which components kept the 
 
 ## Reference: expected runtime
 
-Rough figures for the 80 Wh battery at 100 % charge. Real numbers vary a lot by title; treat these
-as planning guides, not promises.
+Rough figures for the 80 Wh battery at 100 % charge, **under actual game load**. Real numbers vary a
+lot by title; treat these as planning guides, not promises.
+
+> **Why these look lower than figures you'll see elsewhere.** TDP is the *APU's* power budget, not
+> the system's. The display, fans, SSD, and radios add roughly 5–8 W on top. So a "15 W" profile
+> pulls something closer to 21–23 W at the wall — which is why 80 Wh ÷ 15 W = 5.3 hours on paper but
+> ~3.5 in practice. Sources quoting 5–6 hours at 15 W are usually measuring light load, not gaming.
 
 | Profile | TDP | Realistic runtime | Typical use |
 |---|---|---|---|

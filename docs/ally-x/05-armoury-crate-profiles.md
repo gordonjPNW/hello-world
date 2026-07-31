@@ -39,16 +39,38 @@ in, not as a habit.
 
 ### Setting TDP correctly
 
-Manual mode exposes three values. Set them together:
+Manual mode exposes three values, and they differ in **how long each limit applies**, not just how
+high:
 
-- **SPL** (Sustained Power Limit) — your actual target. This is the number in the table.
-- **sPPT** (Slow Package Power Tracking) — short-term boost. Set ~2–3 W above SPL.
-- **fPPT** (Fast Package Power Tracking) — instantaneous spikes. Set ~4–5 W above SPL.
+| Value | Full name | Applies for | Slider range |
+|---|---|---|---|
+| **SPL** | Sustained Power Limit | Indefinitely — the real ceiling | **7–30 W** |
+| **sPPT** | Slow Package Power Tracking | ~30 s to a couple of minutes | **15–43 W** |
+| **fPPT** | Fast Package Power Tracking | ~5–10 s bursts | **15–53 W** |
 
-Example for Handheld Default: **SPL 17 / sPPT 20 / fPPT 22**.
+SPL is the number in the profile table above — it's what determines your sustained frame rate and
+your battery drain. The other two govern how freely the APU can spike above it during level loads,
+shader compilation, and menu transitions.
 
-Setting all three equal flattens boost response and makes the device feel sluggish in menus and
-during level loads. Leaving the gaps in place lets it spike briefly without raising sustained draw.
+> **Note the floors.** sPPT and fPPT cannot go below **15 W**, regardless of SPL. This matters for
+> the low-power profiles: at SPL 10 W you simply cannot set a boost limit "2 W above," so leave both
+> at 15 W and let the floor do its job.
+
+Suggested values:
+
+| Profile | SPL | sPPT | fPPT |
+|---|---|---|---|
+| Battery Sipper | 10–13 | 15 | 15 |
+| Handheld Default | 17 | 20 | 22 |
+| Handheld Max | 25 | 28 | 30 |
+| Docked | 30 | 33 | 35 |
+
+Setting all three equal where you *can* flattens boost response and makes the device feel sluggish
+in menus and during loading. Leaving a gap lets it spike briefly without raising sustained draw — you
+get responsiveness without paying for it in battery.
+
+> **30 W is plugged-in only.** On battery the ceiling is 25 W, so the Docked profile will silently
+> behave as Handheld Max if you undock without switching profiles.
 
 ## Fan curves
 
