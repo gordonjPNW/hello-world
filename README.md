@@ -7,6 +7,9 @@ A simple starter project.
 - **[ROG Ally X Optimization Guide](docs/ally-x/00-overview.md)** — an 11-phase runbook for tuning an
   ASUS ROG Ally X (2024) on Windows 11 + Steam, covering handheld and docked use. Start with the
   [overview](docs/ally-x/00-overview.md).
+- **[2017 Chevy Cruze Infotainment Guide](docs/cruze/00-overview.md)** — an 8-phase guide to the
+  MyLink system in a 2017 Cruze hatchback LT: recalls, what "updating" really means on this car,
+  CarPlay/Android Auto, OnStar, and fixing a frozen screen.
 
 ## Tools
 
