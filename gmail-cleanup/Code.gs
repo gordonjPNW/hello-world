@@ -147,7 +147,13 @@ function showSettings() {
     'DRY_RUN: ' + cfg.DRY_RUN,
     'PROTECT_STARRED: ' + cfg.PROTECT_STARRED,
     'PROTECT_IMPORTANT: ' + cfg.PROTECT_IMPORTANT,
-    'ALLOWLIST: ' + (cfg.ALLOWLIST || '(empty)')
+    'ALLOWLIST: ' + (cfg.ALLOWLIST || '(empty)'),
+    '',
+    'Scan searches for:',
+    scanQuery_(cfg),
+    '',
+    'Paste that into the Gmail search box to check it matches mail. If it returns nothing, the '
+      + 'scan will find nothing.'
   ];
 
   if (cfg.PROTECT_IMPORTANT) {
@@ -295,6 +301,18 @@ function runPipeline() {
 /* -------------------------------------------------------------------------- scan */
 
 /**
+ * The search that defines the scan window.
+ *
+ * Gmail's newer_than: only understands d, m and y — there is no w. "newer_than:8w" is not a narrow
+ * search, it's an invalid one, and Gmail answers it with zero results, so convert weeks to days.
+ * Drafts are excluded with is:draft, which is the real operator; in:draft is not one.
+ */
+function scanQuery_(cfg) {
+  var days = Math.max(1, Math.round(cfg.SCAN_WEEKS * 7));
+  return 'newer_than:' + days + 'd -in:sent -in:trash -in:chats -is:draft';
+}
+
+/**
  * Walks the scan window tallying messages per sender. Returns true when the whole window is done,
  * false when it ran out of time and needs another pass.
  */
@@ -305,7 +323,7 @@ function scanStep_(cfg, deadline) {
   var me = myEmail_();
   var tally = loadState_();
 
-  var query = 'newer_than:' + cfg.SCAN_WEEKS + 'w -in:sent -in:draft -in:trash -in:chats';
+  var query = scanQuery_(cfg);
 
   while (true) {
     if (Date.now() > deadline) {
@@ -496,7 +514,7 @@ function cleanStep_(cfg, deadline) {
  * advances past threads we deliberately kept — that's what keeps this from re-reading its own work.
  */
 function trashSender_(address, cfg, deadline, startOffset) {
-  var query = 'from:' + address + ' -in:sent -in:draft -in:trash -in:chats';
+  var query = 'from:' + address + ' -in:sent -in:trash -in:chats -is:draft';
   if (cfg.PROTECT_STARRED) query += ' -is:starred';
   if (cfg.PROTECT_IMPORTANT) query += ' -is:important';
 
@@ -585,6 +603,13 @@ function summaryStep_(cfg, mode) {
   notes += ' Skipped ' + keptReplied + ' threads you had replied to.'
     + ' PROTECT_IMPORTANT=' + cfg.PROTECT_IMPORTANT
     + ', PROTECT_STARRED=' + cfg.PROTECT_STARRED + '.';
+
+  // Zero scanned means the search matched nothing, which is a different problem from "found
+  // nothing worth deleting" and should not look the same in the log.
+  if (scanned === 0) {
+    notes = 'WARNING: the scan matched 0 messages, so nothing could be flagged. Search used: '
+      + scanQuery_(cfg) + ' — check it returns results when pasted into the Gmail search box.';
+  }
 
   sheet_(SHEETS.LOG).appendRow([
     new Date(), label, scanned, flagged.length, trashed, minutes, notes
