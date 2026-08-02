@@ -182,24 +182,42 @@ function showStatus() {
     return trigger.getHandlerFunction() === RESUME_FN;
   }).length;
 
+  // The surest sign a run is executing right now: runPipeline holds the script lock for its whole
+  // chunk. Without this check an in-flight first chunk looks stalled, because progress counters and
+  // the continuation trigger are both only written when a chunk pauses.
+  var lock = LockService.getScriptLock();
+  var running = !lock.tryLock(0);
+  if (!running) lock.releaseLock();
+
+  var heartbeat = Number(props.getProperty('HEARTBEAT') || 0);
+  var sinceBeat = heartbeat ? Math.round((Date.now() - heartbeat) / 1000) : null;
   var sendersFound = Math.max(0, sheet_(SHEETS.STATE).getLastRow());
+
   var lines = [
-    'Phase: ' + phase + (phase === 'DONE' ? ' (finished)' : ' (still working)'),
+    'Phase: ' + phase + (phase === 'DONE' ? ' (finished)' : ''),
     'Mode: ' + (props.getProperty('MODE') || '?'),
-    'Threads scanned so far: ' + (props.getProperty('SCAN_CURSOR') || '0'),
+    'Threads scanned so far: ' + (props.getProperty('SCAN_SEEN')
+      || props.getProperty('SCAN_CURSOR') || '0'),
     'Messages counted so far: ' + (props.getProperty('SCAN_COUNT') || '0'),
     'Senders found so far: ' + sendersFound,
     'Threads trashed so far: ' + (props.getProperty('CLEAN_TOTAL') || '0'),
     '',
-    'Continuation jobs queued: ' + pending
+    'Continuation jobs queued: ' + pending,
+    'Last progress: ' + (sinceBeat === null ? 'none yet' : sinceBeat + ' seconds ago')
   ];
 
-  if (phase !== 'DONE' && pending === 0) {
-    lines.push('', 'Nothing is queued to continue this run, so it has stalled. Check '
-      + 'Extensions > Apps Script > Executions for an error, then start the run again.');
-  } else if (phase !== 'DONE') {
-    lines.push('', 'It picks up again about a minute after each pause. The Senders tab refreshes '
-      + 'as it goes.');
+  if (phase === 'DONE') {
+    lines.push('', 'This run has finished. See the Log tab.');
+  } else if (running) {
+    lines.push('', 'A run is executing RIGHT NOW. Counters only update when each burst ends, so '
+      + 'zeros here are normal for the first few minutes. Leave it alone and check back.');
+  } else if (pending > 0) {
+    lines.push('', 'Paused between bursts — it resumes in under a minute.');
+  } else if (sinceBeat !== null && sinceBeat < 180) {
+    lines.push('', 'Between bursts. Give it a minute, then check again.');
+  } else {
+    lines.push('', 'Nothing is running and nothing is queued, so this run has stalled. Open '
+      + 'Extensions > Apps Script > Executions to see the error, then start it again.');
   }
 
   ui.alert('Run status', lines.join('\n'), ui.ButtonSet.OK);
@@ -328,7 +346,12 @@ function scanStep_(cfg, deadline) {
   while (true) {
     if (Date.now() > deadline) {
       saveState_(tally);
-      props.setProperties({ SCAN_CURSOR: String(cursor), SCAN_COUNT: String(counted) });
+      props.setProperties({
+        SCAN_CURSOR: String(cursor),
+        SCAN_COUNT: String(counted),
+        SCAN_SEEN: String(cursor),
+        HEARTBEAT: String(Date.now())
+      });
       return false;
     }
 
@@ -354,10 +377,21 @@ function scanStep_(cfg, deadline) {
     }
 
     cursor += threads.length;
+
+    // Display-only progress. SCAN_CURSOR stays authoritative and is written on pause/finish, so a
+    // crash mid-chunk can't resume from a cursor whose tally was never saved.
+    if (cursor % (PAGE * 5) === 0) {
+      props.setProperties({ SCAN_SEEN: String(cursor), HEARTBEAT: String(Date.now()) });
+    }
   }
 
   saveState_(tally);
-  props.setProperties({ SCAN_CURSOR: String(cursor), SCAN_COUNT: String(counted) });
+  props.setProperties({
+    SCAN_CURSOR: String(cursor),
+    SCAN_COUNT: String(counted),
+    SCAN_SEEN: String(cursor),
+    HEARTBEAT: String(Date.now())
+  });
   return true;
 }
 
@@ -480,6 +514,7 @@ function cleanStep_(cfg, deadline) {
     var outcome = trashSender_(String(record[COL.ADDRESS]), cfg, deadline, offset);
     offset = 0;
     keptTotal += outcome.keptReplied;
+    props.setProperty('HEARTBEAT', String(Date.now()));
 
     if (outcome.trashed) {
       var running = Number(record[COL.TRASHED] || 0) + outcome.trashed;
