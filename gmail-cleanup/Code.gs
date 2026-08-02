@@ -71,6 +71,8 @@ function onOpen() {
     .addItem('2. Scan & report (never deletes)', 'runReport')
     .addItem('3. Run cleanup now', 'runCleanupNow')
     .addSeparator()
+    .addItem('Show current settings', 'showSettings')
+    .addItem('Show run status', 'showStatus')
     .addItem('Install weekly auto-run', 'installWeeklyTrigger')
     .addItem('Remove weekly auto-run', 'removeWeeklyTrigger')
     .addToUi();
@@ -118,14 +120,109 @@ function runReport() {
   startRun_('REPORT');
 }
 
+/**
+ * Shows the settings exactly as the script reads them. DRY_RUN lives in the Config tab, not in the
+ * code — editing DEFAULTS after the first setup() changes nothing — so this is the honest answer to
+ * "is it actually going to delete anything?"
+ */
+function showSettings() {
+  var ui = SpreadsheetApp.getUi();
+  var cfg;
+  try {
+    cfg = readConfig_();
+  } catch (err) {
+    ui.alert('Cannot read settings', err.message, ui.ButtonSet.OK);
+    return;
+  }
+
+  var lines = [
+    cfg.DRY_RUN
+      ? 'DRY_RUN is TRUE — nothing will be deleted.'
+      : 'DRY_RUN is FALSE — mail WILL be moved to Trash.',
+    '',
+    'Read from the "' + SHEETS.CONFIG + '" tab of this spreadsheet:',
+    '',
+    'SCAN_WEEKS: ' + cfg.SCAN_WEEKS,
+    'THRESHOLD_PER_WEEK: ' + cfg.THRESHOLD_PER_WEEK,
+    'DRY_RUN: ' + cfg.DRY_RUN,
+    'PROTECT_STARRED: ' + cfg.PROTECT_STARRED,
+    'PROTECT_IMPORTANT: ' + cfg.PROTECT_IMPORTANT,
+    'ALLOWLIST: ' + (cfg.ALLOWLIST || '(empty)')
+  ];
+
+  if (cfg.PROTECT_IMPORTANT) {
+    lines.push('', 'Note: PROTECT_IMPORTANT is on, and Gmail auto-marks a lot of bulk mail as '
+      + 'important. That is the usual reason a cleanup deletes less than expected.');
+  }
+
+  ui.alert('Current settings', lines.join('\n'), ui.ButtonSet.OK);
+}
+
+/**
+ * Reports where a run actually is. A scan over a large mailbox spans several executions, so "the
+ * Senders tab is empty" usually means still scanning rather than nothing found.
+ */
+function showStatus() {
+  var ui = SpreadsheetApp.getUi();
+  var props = PropertiesService.getScriptProperties();
+  var phase = props.getProperty('PHASE');
+
+  if (!phase) {
+    ui.alert('Run status', 'No run has been started yet in this copy.', ui.ButtonSet.OK);
+    return;
+  }
+
+  var pending = ScriptApp.getProjectTriggers().filter(function (trigger) {
+    return trigger.getHandlerFunction() === RESUME_FN;
+  }).length;
+
+  var sendersFound = Math.max(0, sheet_(SHEETS.STATE).getLastRow());
+  var lines = [
+    'Phase: ' + phase + (phase === 'DONE' ? ' (finished)' : ' (still working)'),
+    'Mode: ' + (props.getProperty('MODE') || '?'),
+    'Threads scanned so far: ' + (props.getProperty('SCAN_CURSOR') || '0'),
+    'Messages counted so far: ' + (props.getProperty('SCAN_COUNT') || '0'),
+    'Senders found so far: ' + sendersFound,
+    'Threads trashed so far: ' + (props.getProperty('CLEAN_TOTAL') || '0'),
+    '',
+    'Continuation jobs queued: ' + pending
+  ];
+
+  if (phase !== 'DONE' && pending === 0) {
+    lines.push('', 'Nothing is queued to continue this run, so it has stalled. Check '
+      + 'Extensions > Apps Script > Executions for an error, then start the run again.');
+  } else if (phase !== 'DONE') {
+    lines.push('', 'It picks up again about a minute after each pause. The Senders tab refreshes '
+      + 'as it goes.');
+  }
+
+  ui.alert('Run status', lines.join('\n'), ui.ButtonSet.OK);
+}
+
 function runCleanupNow() {
-  var cfg = readConfig_();
-  if (cfg.DRY_RUN) {
-    var ui = SpreadsheetApp.getUi();
-    var answer = ui.alert('DRY_RUN is on',
-      'Config has DRY_RUN set to TRUE, so this run will report but delete nothing.\n\n'
-        + 'Continue as a dry run?', ui.ButtonSet.YES_NO);
-    if (answer !== ui.Button.YES) return;
+  var ui = SpreadsheetApp.getUi();
+  var cfg;
+  try {
+    cfg = readConfig_();
+  } catch (err) {
+    ui.alert('Cannot read settings', err.message, ui.ButtonSet.OK);
+    return;
+  }
+
+  // Always confirm, and always say which mode is about to run. Finding out afterwards from the Log
+  // is how a run that quietly did nothing looks identical to one that worked.
+  var message = cfg.DRY_RUN
+    ? 'DRY_RUN is TRUE in the Config tab, so this run will report but DELETE NOTHING.\n\n'
+        + 'Set DRY_RUN to FALSE in the Config tab if you meant to delete for real.\n\n'
+        + 'Continue as a dry run?'
+    : 'DRY_RUN is FALSE. This will move every flagged sender\'s mail to Trash — their ENTIRE '
+        + 'history, not just recent mail.\n\n'
+        + 'Trash is recoverable for 30 days. Starred, important, and replied-to mail is skipped '
+        + 'while those protections are on.\n\nDelete for real?';
+
+  if (ui.alert(cfg.DRY_RUN ? 'Dry run' : 'Delete for real', message, ui.ButtonSet.YES_NO)
+      !== ui.Button.YES) {
+    return;
   }
   startRun_('FULL');
 }
@@ -145,6 +242,7 @@ function startRun_(mode) {
     SCAN_COUNT: '0',
     CLEAN_ROW: '2',
     CLEAN_TOTAL: '0',
+    CLEAN_KEPT: '0',
     CLEAN_OFFSET: '0',
     RUN_START: String(Date.now())
   });
@@ -168,10 +266,15 @@ function runPipeline() {
 
     while (phase !== 'DONE' && Date.now() < deadline) {
       if (phase === 'SCAN') {
-        if (!scanStep_(cfg, deadline)) break;
+        if (!scanStep_(cfg, deadline)) {
+          // Out of time mid-scan. Refresh the Senders tab from what we have so far so there is
+          // visible progress, then let the resume trigger pick it up.
+          classifyStep_(cfg, true);
+          break;
+        }
         phase = 'CLASSIFY';
       } else if (phase === 'CLASSIFY') {
-        classifyStep_(cfg);
+        classifyStep_(cfg, false);
         phase = (mode === 'REPORT') ? 'SUMMARY' : 'CLEAN';
       } else if (phase === 'CLEAN') {
         if (!cleanStep_(cfg, deadline)) break;
@@ -242,8 +345,15 @@ function scanStep_(cfg, deadline) {
 
 /* -------------------------------------------------------------------------- classify */
 
-/** Turns the tally into the Senders tab: rate, verdict, and unsubscribe links for the flagged. */
-function classifyStep_(cfg) {
+/**
+ * Turns the tally into the Senders tab: rate, verdict, and unsubscribe links for the flagged.
+ *
+ * Called with interim=true after each scan chunk so the sheet fills in as the scan runs — on a big
+ * mailbox the scan spans several executions, and waiting until the end means staring at an empty
+ * tab wondering whether anything is happening. Interim passes skip the unsubscribe lookups, which
+ * cost an API call per flagged sender and would be redone every chunk for no benefit.
+ */
+function classifyStep_(cfg, interim) {
   var tally = loadState_();
   var me = myEmail_();
   var rows = [];
@@ -262,7 +372,7 @@ function classifyStep_(cfg) {
     }
 
     var unsub = { url: '', mailto: '' };
-    if (verdict === 'DELETE') unsub = unsubscribeLinks_(entry.sampleId);
+    if (verdict === 'DELETE' && !interim) unsub = unsubscribeLinks_(entry.sampleId);
 
     rows.push([
       address,
@@ -331,9 +441,17 @@ function cleanStep_(cfg, deadline) {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return true;
 
+  // Without this the reply protection fails open: iReplied_ compares against an empty string, finds
+  // no match on anything, and every conversation gets trashed. Better to stop than to delete blind.
+  if (!myEmail_()) {
+    throw new Error('Could not determine your email address, so replied-to threads cannot be '
+      + 'protected. Run the cleanup from the menu (not a trigger) and re-authorize if asked.');
+  }
+
   var data = sheet.getRange(2, 1, lastRow - 1, SENDER_HEADERS.length).getValues();
   var row = Number(props.getProperty('CLEAN_ROW') || 2);
   var total = Number(props.getProperty('CLEAN_TOTAL') || 0);
+  var keptTotal = Number(props.getProperty('CLEAN_KEPT') || 0);
   // Where we left off inside the sender we were part-way through when time ran out.
   var offset = Number(props.getProperty('CLEAN_OFFSET') || 0);
 
@@ -343,6 +461,7 @@ function cleanStep_(cfg, deadline) {
 
     var outcome = trashSender_(String(record[COL.ADDRESS]), cfg, deadline, offset);
     offset = 0;
+    keptTotal += outcome.keptReplied;
 
     if (outcome.trashed) {
       var running = Number(record[COL.TRASHED] || 0) + outcome.trashed;
@@ -354,6 +473,7 @@ function cleanStep_(cfg, deadline) {
       props.setProperties({
         CLEAN_ROW: String(row),
         CLEAN_TOTAL: String(total),
+        CLEAN_KEPT: String(keptTotal),
         CLEAN_OFFSET: String(outcome.offset)
       });
       return false;
@@ -363,6 +483,7 @@ function cleanStep_(cfg, deadline) {
   props.setProperties({
     CLEAN_ROW: String(row),
     CLEAN_TOTAL: String(total),
+    CLEAN_KEPT: String(keptTotal),
     CLEAN_OFFSET: '0'
   });
   return true;
@@ -382,12 +503,17 @@ function trashSender_(address, cfg, deadline, startOffset) {
   var me = myEmail_();
   var offset = startOffset || 0;
   var trashed = 0;
+  var keptReplied = 0;
 
   while (true) {
-    if (Date.now() > deadline) return { trashed: trashed, done: false, offset: offset };
+    if (Date.now() > deadline) {
+      return { trashed: trashed, keptReplied: keptReplied, done: false, offset: offset };
+    }
 
     var threads = GmailApp.search(query, offset, PAGE);
-    if (!threads.length) return { trashed: trashed, done: true, offset: offset };
+    if (!threads.length) {
+      return { trashed: trashed, keptReplied: keptReplied, done: true, offset: offset };
+    }
 
     // A one-message thread can't contain a reply, and nearly all bulk mail is one message, so
     // only pay for the message fetch when a thread actually has a conversation in it.
@@ -403,6 +529,8 @@ function trashSender_(address, cfg, deadline, startOffset) {
         doomed.push(thread);
       }
     });
+
+    keptReplied += kept;
 
     if (cfg.DRY_RUN) {
       trashed += doomed.length;
@@ -440,23 +568,34 @@ function summaryStep_(cfg, mode) {
 
   var scanned = Number(props.getProperty('SCAN_COUNT') || 0);
   var trashed = Number(props.getProperty('CLEAN_TOTAL') || 0);
+  var keptReplied = Number(props.getProperty('CLEAN_KEPT') || 0);
   var started = Number(props.getProperty('RUN_START') || Date.now());
   var minutes = Math.round((Date.now() - started) / 6000) / 10;
   var live = (mode === 'FULL' && !cfg.DRY_RUN);
   var label = live ? 'cleanup' : (mode === 'REPORT' ? 'report only' : 'dry run');
 
+  // Spell out the settings that decide how much actually got deleted, so a small number is
+  // self-explanatory instead of looking like a failure.
+  var notes = live
+    ? 'Mail moved to Trash, recoverable for 30 days.'
+    : (mode === 'REPORT'
+        ? 'Report only — menu item 2 never deletes. Use "3. Run cleanup now" to delete.'
+        : 'Nothing was deleted: DRY_RUN is TRUE in the Config tab. Set it to FALSE there — '
+          + 'editing the code does not change it.');
+  notes += ' Skipped ' + keptReplied + ' threads you had replied to.'
+    + ' PROTECT_IMPORTANT=' + cfg.PROTECT_IMPORTANT
+    + ', PROTECT_STARRED=' + cfg.PROTECT_STARRED + '.';
+
   sheet_(SHEETS.LOG).appendRow([
-    new Date(), label, scanned, flagged.length, trashed, minutes,
-    live ? 'Mail moved to Trash, recoverable for 30 days.'
-         : 'Nothing was deleted. Set DRY_RUN to FALSE in Config to delete for real.'
+    new Date(), label, scanned, flagged.length, trashed, minutes, notes
   ]);
 
-  sendSummary_(cfg, flagged, scanned, trashed, live);
+  sendSummary_(cfg, flagged, scanned, trashed, live, keptReplied, mode);
   toast_(live ? ('Done. ' + trashed + ' threads moved to Trash.')
               : ('Done. ' + flagged.length + ' senders flagged, nothing deleted.'));
 }
 
-function sendSummary_(cfg, flagged, scanned, trashed, live) {
+function sendSummary_(cfg, flagged, scanned, trashed, live, keptReplied, mode) {
   var me = myEmail_();
   if (!me) return;
 
@@ -467,12 +606,27 @@ function sendSummary_(cfg, flagged, scanned, trashed, live) {
     + cfg.SCAN_WEEKS + ' weeks. ' + flagged.length + ' senders average more than '
     + cfg.THRESHOLD_PER_WEEK + ' emails a week.</p>';
 
-  html += live
-    ? '<p style="margin:0 0 16px"><b>' + trashed + ' threads moved to Trash.</b> '
-      + 'Gmail keeps them for 30 days if you need something back.</p>'
-    : '<p style="margin:0 0 16px;padding:10px;background:#fef7e0;border-radius:6px">'
+  if (live) {
+    html += '<p style="margin:0 0 16px"><b>' + trashed + ' threads moved to Trash.</b> '
+      + 'Gmail keeps them for 30 days if you need something back.</p>';
+  } else if (mode === 'REPORT') {
+    html += '<p style="margin:0 0 16px;padding:10px;background:#fef7e0;border-radius:6px">'
+      + '<b>Nothing was deleted &mdash; this was a report.</b> ' + trashed + ' threads would be '
+      + 'trashed. Use <b>Gmail Cleanup &rarr; 3. Run cleanup now</b> to delete.</p>';
+  } else {
+    html += '<p style="margin:0 0 16px;padding:10px;background:#fef7e0;border-radius:6px">'
       + '<b>Nothing was deleted.</b> ' + trashed + ' threads would have been trashed. '
-      + 'Set <code>DRY_RUN</code> to <code>FALSE</code> in the Config tab to run it for real.</p>';
+      + '<code>DRY_RUN</code> is <code>TRUE</code> in the <b>Config tab</b> &mdash; set it to '
+      + '<code>FALSE</code> there. Editing the code does not change it.</p>';
+  }
+
+  html += '<p style="margin:0 0 16px;color:#5f6368;font-size:12px">Skipped ' + keptReplied
+    + ' threads you had replied to. PROTECT_IMPORTANT=' + cfg.PROTECT_IMPORTANT
+    + ', PROTECT_STARRED=' + cfg.PROTECT_STARRED
+    + (cfg.PROTECT_IMPORTANT
+        ? ' &mdash; Gmail auto-marks much bulk mail important, so turning PROTECT_IMPORTANT off '
+          + 'usually deletes considerably more.'
+        : '') + '</p>';
 
   if (flagged.length) {
     html += '<p style="margin:0 0 8px"><b>Unsubscribe to stop these at the source:</b></p>';
@@ -539,25 +693,49 @@ function removeResumeTriggers_() {
 
 /* -------------------------------------------------------------------------- helpers */
 
+/**
+ * Reads settings from the Config tab, which is the only source of truth — DEFAULTS below just seeds
+ * that tab on first setup.
+ *
+ * Throws rather than falling back to DEFAULTS if the tab is missing or empty. Falling back would
+ * silently re-enable DRY_RUN, so a renamed tab would look exactly like a cleanup that decided there
+ * was nothing to delete.
+ */
 function readConfig_() {
-  var sheet = sheet_(SHEETS.CONFIG);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEETS.CONFIG);
+
+  if (!sheet) {
+    throw new Error('No "' + SHEETS.CONFIG + '" tab in this spreadsheet. If you renamed it, rename '
+      + 'it back to "' + SHEETS.CONFIG + '". Otherwise run "1. Set up sheets" first.');
+  }
+  if (sheet.getLastRow() < 2) {
+    throw new Error('The "' + SHEETS.CONFIG + '" tab is empty. Run "1. Set up sheets" to fill it in.');
+  }
+
   var cfg = {};
   Object.keys(DEFAULTS).forEach(function (key) { cfg[key] = DEFAULTS[key]; });
 
-  if (sheet.getLastRow() > 1) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues().forEach(function (row) {
-      var key = String(row[0]).trim();
-      if (!(key in DEFAULTS)) return;
-      var value = row[1];
-      if (typeof DEFAULTS[key] === 'boolean') {
-        cfg[key] = (value === true || String(value).trim().toUpperCase() === 'TRUE');
-      } else if (typeof DEFAULTS[key] === 'number') {
-        var num = Number(value);
-        if (num > 0) cfg[key] = num;
-      } else {
-        cfg[key] = String(value || '');
-      }
-    });
+  var seen = {};
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues().forEach(function (row) {
+    var key = String(row[0]).trim();
+    if (!(key in DEFAULTS)) return;
+    seen[key] = true;
+    var value = row[1];
+    if (typeof DEFAULTS[key] === 'boolean') {
+      cfg[key] = (value === true || String(value).trim().toUpperCase() === 'TRUE');
+    } else if (typeof DEFAULTS[key] === 'number') {
+      var num = Number(value);
+      if (num > 0) cfg[key] = num;
+    } else {
+      cfg[key] = String(value || '');
+    }
+  });
+
+  // A deleted DRY_RUN row would quietly default back to TRUE, which is the same trap.
+  if (!seen.DRY_RUN) {
+    throw new Error('No DRY_RUN row in the "' + SHEETS.CONFIG + '" tab. Add one, or run '
+      + '"1. Set up sheets" on a fresh copy.');
   }
   return cfg;
 }

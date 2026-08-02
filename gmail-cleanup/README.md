@@ -31,6 +31,9 @@ repo if you want to read what you're approving.
 sender mails you, and fills in the **Senders** tab. It deletes nothing, ever — this step is safe to
 run as many times as you like.
 
+On a big mailbox this takes several minutes and runs in bursts, pausing and resuming itself. Rows
+appear in the **Senders** tab as it goes; **Show run status** tells you where it's up to.
+
 Read that list before going further. Anything marked `DELETE` is scheduled to lose its **entire
 history**, not just recent mail. Sort by "Per week" and look for anyone you'd miss — that's the
 step that catches the store you actually order from. Add those to `ALLOWLIST` in the **Config** tab.
@@ -83,6 +86,29 @@ first.
 
 Setup needs a real browser, so have them do it on a computer. After that it's automatic and they can
 ignore it from their phone.
+
+## Troubleshooting
+
+**Nothing was deleted.** `DRY_RUN` lives in the **Config tab of the spreadsheet**, not in the code.
+The `DEFAULTS` block in `Code.gs` only fills that tab in the first time you run "Set up sheets" —
+after that the sheet wins and editing the code changes nothing. Use **Gmail Cleanup → Show current
+settings** to see what the script actually reads. Also check which menu item you clicked: **2. Scan &
+report** never deletes, whatever `DRY_RUN` says. Deleting is **3. Run cleanup now**.
+
+**The Senders tab is empty, or the run seems to have done nothing.** On a large mailbox the scan
+takes longer than Google allows one script run to last, so it works in ~4-minute bursts and picks
+itself up about a minute later. The Senders tab now refreshes after every burst, so you should see
+rows appearing. **Gmail Cleanup → Show run status** tells you which phase it's in and whether a
+continuation is queued. If it says nothing is queued and the phase isn't DONE, the run stalled —
+open **Extensions → Apps Script → Executions** to see the error, then start it again.
+
+**It deleted far less than the dry run projected.** `PROTECT_IMPORTANT` is on by default and Gmail
+auto-marks a lot of promotional mail as important. Set it to `FALSE` in Config and run again. The
+summary email and Log now print both protection flags for exactly this reason.
+
+**"Config tab not found" or "Config tab is empty".** The tab was renamed or deleted. Rename it back
+to `Config`, or run "Set up sheets" on a fresh copy. The script refuses to guess here on purpose —
+falling back to defaults would silently turn `DRY_RUN` back on.
 
 ## Two things that surprise people on the first run
 
