@@ -11,10 +11,16 @@ A simple starter project.
   runbook for an account around level 30–50, covering progression, dungeon and Clan Boss squads, and
   event planning. Start with the [overview](docs/raid-shadow-legends/00-overview.md).
 
-## Getting Startted
+## Getting Started
 
-Clone the repo and open `index.html` in your browser.
+Each guide is plain markdown — start from its overview, linked above, and read the phases in order.
+
+Both guides also ship a self-contained single-page runbook you can open directly in a browser, with
+checklists that persist between visits:
+
+- `docs/ally-x/runbook.html`
+- `docs/raid-shadow-legends/runbook.html`
 
 ## Contributing
 
-Pull requests are welome!
+Pull requests are welcome!
