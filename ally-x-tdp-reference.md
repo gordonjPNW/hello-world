@@ -69,9 +69,16 @@ The Z1 Extreme's performance-per-watt curve is steeply nonlinear:
 - **10W → 17W** buys roughly **35%** more performance
 - **17W → 25W** buys roughly **12%**
 
-Watts convert into framerate at the *bottom* of the range. That makes **Efficient the
-highest-value profile here**, not the compromise one. On the measured 66.5 Wh pack it is
-roughly 4–5 hours versus about 2 at 17 W.
+Watts convert into framerate at the *bottom* of the range. On the measured 66.5 Wh pack,
+10 W is roughly 4–5 hours versus about 2 at 17 W.
+
+> **This curve describes GPU-bound workloads only.** Measured on Miles Morales, 10 W → 17 W
+> bought **148%**, not 35% — see [Measured results](#measured-results). CPU-bound titles
+> fall off a cliff at the bottom of the range instead of degrading gently, which inverts
+> the conclusion. Do not use this curve to predict a CPU-bound game's behaviour.
+
+For genuinely GPU-bound work — indies, 2D, emulation — Efficient remains the highest-value
+profile here rather than the compromise one. It does not stretch to AAA.
 
 ### What Docked is actually for
 
@@ -137,7 +144,7 @@ thinking about TDP entirely.
 | Game | Profile |
 |------|---------|
 | Palworld | Handheld AAA (17W) |
-| Marvel's Spider-Man: Miles Morales | Handheld AAA (17W) |
+| Marvel's Spider-Man: Miles Morales | Handheld AAA (17W) — **confirmed**; CPU-bound, unusable at 10W |
 | Planet Zoo | Handheld AAA (17W) — CPU-bound, benefits from the Memory Integrity fix |
 | Anything 2D / indie | Efficient (10W) |
 | Cloud / streamed | Cloud (7W) |
@@ -231,6 +238,38 @@ For cloud and streaming, the frame cap and display refresh are where the battery
 come from — not the TDP floor. The APU decodes video rather than rendering and never
 approaches 7 W.
 
+## Measured results
+
+**Marvel's Spider-Man: Miles Morales**, handheld, internal panel at 120 Hz, uncapped:
+
+| Profile | SPL | Result |
+|---------|-----|--------|
+| Handheld AAA | 17 W | **~62 fps**, almost steady over 10 minutes |
+| Efficient | 10 W | **~25 fps**, described as "almost slo-mo" |
+
+Two things follow.
+
+**Clocks held at 17 W.** Ten minutes of steady framerate means no thermal sag, so the fan
+curve is doing its job. Not conclusive for the hour-two case, but the profile is sound.
+
+**Efficient does not stretch to AAA.** 2.5× the performance for 1.7× the power is the
+opposite shape from the documented curve. Miles Morales is an open-world streaming title
+with heavy CPU work in traversal, and at 10 W the CPU starves. Group it with Planet Zoo as
+CPU-bound rather than with the GPU-bound titles the curve was written for.
+
+### SPL is a ceiling, not a target
+
+The chip draws what the workload demands, up to the limit. Both figures above are
+**uncapped** — at 62 fps the 17 W ceiling was genuinely being reached.
+
+Once the 40 fps cap is applied, the GPU downclocks to hit 40 and draws only what that
+needs, likely around 13–14 W. At that point Handheld AAA's 17 W ceiling is never touched,
+so building an intermediate ~14 W profile would change nothing.
+
+So the order of operations is: **cap first, then measure actual draw.** Only if the capped
+draw is still pinned at 17 W does a middle profile earn its place, and ~13 W is where
+interpolation between the two data points puts 40 fps.
+
 ## Validate, don't trust
 
 Run something demanding at 17 W for ~20 minutes and watch whether clocks hold.
@@ -238,6 +277,10 @@ Run something demanding at 17 W for ~20 minutes and watch whether clocks hold.
 - Clocks **hold** → the profile is good.
 - Clocks **sag** → fix the fan curve, not the wattage. Adding watts to a thermally
   limited chip just adds heat and noise.
+
+A capped test measures nothing about the power limit. If the game sits pinned at the cap
+the whole time, the profile has headroom and clock sag is not the constraint — run
+uncapped to test the ceiling itself.
 
 Silicon lottery moves the efficiency sweet spot a watt or two either way, so treat every
 number above as a validated starting point rather than a final answer.
@@ -296,9 +339,15 @@ to target one explicitly, so it cannot silently address the TV.
 - [ ] Confirm the Docked fan curve survived the power-source context switch.
 - [ ] Confirm the battery profiles still read as set — Handheld AAA at 17/20/25.
 - [ ] Confirm whether a `Fan 2` curve exists and mirror it.
-- [ ] Run the 20-minute validation at 17 W. **Do this before enabling any of the phase 2
-      software features below** — frame generation or a second frame cap layered on top
-      will make clock behavior unreadable.
+- [x] Validated at 17 W. ~62 fps steady over 10 minutes in Miles Morales, no clock sag.
+- [x] Efficient tested against AAA and rejected — ~25 fps in Miles Morales.
+- [ ] Apply the 40 fps cap, then read actual power draw on Handheld AAA. If it sits well
+      below 17 W, no intermediate profile is needed.
+- [ ] Record which graphics settings and FSR level the 62 fps figure was measured at —
+      currently unknown, which limits how far the number generalises.
+- [ ] Standby drain check: 85% at 09:00, reading again around 19:30. Healthy S0ix sleep is
+      0.5–1%/hour, so expect 75–80%. Near 50–55% means it never slept, which costs more
+      battery than any profile tuning recovers.
 
 ## Phase 2 — not yet configured
 
