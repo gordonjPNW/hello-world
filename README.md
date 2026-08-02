@@ -8,6 +8,12 @@ A simple starter project.
   ASUS ROG Ally X (2024) on Windows 11 + Steam, covering handheld and docked use. Start with the
   [overview](docs/ally-x/00-overview.md).
 
+## Tools
+
+- **[Gmail bulk-mail cleanup](gmail-cleanup/README.md)** — a Google Apps Script that trashes every
+  sender who mails you more than three times a week and emails you the list with unsubscribe links.
+  Runs weekly on its own, and copies to another person's account with a single link.
+
 ## Getting Startted
 
 Clone the repo and open `index.html` in your browser.
