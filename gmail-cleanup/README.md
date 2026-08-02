@@ -49,6 +49,36 @@ A big mailbox takes longer than Google allows a single script run to last. The s
 itself — it saves its place, schedules itself to pick up a minute later, and repeats until it's
 finished. If a run seems to stop early, it hasn't; check the **Log** tab in a few minutes.
 
+## The sweep: delete everything not marked important
+
+The threshold cleanup only touches senders who *currently* exceed your rate limit, so most of a large
+old mailbox is out of its reach by design. **Gmail Cleanup → Sweep everything not important** is the
+blunt instrument: it trashes everything Gmail didn't flag as important, mailbox-wide, with no sender
+analysis at all.
+
+It always keeps:
+
+- **Important mail** — that's the whole selector
+- **Starred mail**, and **threads you replied to**
+- **Anything from the last 30 days**, even if unimportant (`SWEEP_KEEP_DAYS`)
+- **Anything with an attachment** (`SWEEP_PROTECT_ATTACHMENTS`)
+- **Allowlisted senders**
+
+To go harder, set `SWEEP_KEEP_DAYS` to `0` and `SWEEP_PROTECT_ATTACHMENTS` to `FALSE`. Those two are
+the difference between "aggressive" and "everything that isn't important, full stop."
+
+Before it starts, the confirmation dialog prints the exact Gmail search it will use. **Paste that into
+Gmail's search box first** — the result count is precisely what's about to be deleted, and it takes
+seconds. Worth doing once even though everything is recoverable from Trash for 30 days.
+
+The sweep is deliberately manual and never runs on the weekly trigger. Only the threshold cleanup is
+scheduled.
+
+**It may take days.** Gmail allows a script roughly 20,000 operations per day. A sweep of a 30k+
+mailbox will exhaust that, which is fine — it saves its place, writes a `paused` row in the Log, and
+resumes automatically about 6 hours later, repeating until it finishes. Attachments and importance
+protections mean the count also won't match your total message count.
+
 ## Config
 
 | Setting | Default | What it does |
@@ -59,6 +89,8 @@ finished. If a run seems to stop early, it hasn't; check the **Log** tab in a fe
 | `PROTECT_STARRED` | TRUE | Never delete starred mail. |
 | `PROTECT_IMPORTANT` | TRUE | Never delete mail Gmail marked important. |
 | `ALLOWLIST` | empty | Never delete these. Comma-separated, takes `news@store.com` or `@mybank.com`. |
+| `SWEEP_KEEP_DAYS` | 30 | Sweep only: keep mail newer than this many days. `0` sweeps everything. |
+| `SWEEP_PROTECT_ATTACHMENTS` | TRUE | Sweep only: never delete mail with attachments. |
 
 ## What it will never delete
 

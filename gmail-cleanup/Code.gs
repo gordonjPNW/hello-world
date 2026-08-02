@@ -24,7 +24,9 @@ var DEFAULTS = {
   DRY_RUN: true,
   PROTECT_STARRED: true,
   PROTECT_IMPORTANT: true,
-  ALLOWLIST: ''
+  ALLOWLIST: '',
+  SWEEP_KEEP_DAYS: 30,
+  SWEEP_PROTECT_ATTACHMENTS: true
 };
 
 var CONFIG_NOTES = {
@@ -35,7 +37,12 @@ var CONFIG_NOTES = {
   PROTECT_IMPORTANT: 'TRUE = never delete mail Gmail marked important. Gmail marks a lot of bulk '
     + 'mail important, so set this FALSE if the cleanup deletes less than you expected.',
   ALLOWLIST: 'Never delete these, whatever the numbers say. Comma-separated. Accepts full '
-    + 'addresses (news@store.com) and whole domains (@mybank.com).'
+    + 'addresses (news@store.com) and whole domains (@mybank.com).',
+  SWEEP_KEEP_DAYS: 'Sweep only: keep anything newer than this many days, even if not important. '
+    + 'Set to 0 to sweep everything regardless of age.',
+  SWEEP_PROTECT_ATTACHMENTS: 'Sweep only: TRUE = never delete mail with attachments. Gmail rarely '
+    + 'marks attachments important, and this is where tax forms, contracts and tickets live. Set '
+    + 'FALSE for a maximal sweep.'
 };
 
 /** Senders sheet columns, 0-indexed. */
@@ -70,6 +77,8 @@ function onOpen() {
     .addItem('1. Set up sheets', 'setup')
     .addItem('2. Scan & report (never deletes)', 'runReport')
     .addItem('3. Run cleanup now', 'runCleanupNow')
+    .addSeparator()
+    .addItem('Sweep everything not important', 'runSweep')
     .addSeparator()
     .addItem('Show current settings', 'showSettings')
     .addItem('Show run status', 'showStatus')
@@ -148,9 +157,15 @@ function showSettings() {
     'PROTECT_STARRED: ' + cfg.PROTECT_STARRED,
     'PROTECT_IMPORTANT: ' + cfg.PROTECT_IMPORTANT,
     'ALLOWLIST: ' + (cfg.ALLOWLIST || '(empty)'),
+    'SWEEP_KEEP_DAYS: ' + cfg.SWEEP_KEEP_DAYS
+      + (Number(cfg.SWEEP_KEEP_DAYS) > 0 ? '' : ' (no age limit — sweeps everything)'),
+    'SWEEP_PROTECT_ATTACHMENTS: ' + cfg.SWEEP_PROTECT_ATTACHMENTS,
     '',
     'Scan searches for:',
     scanQuery_(cfg),
+    '',
+    'Sweep searches for:',
+    sweepQuery_(cfg),
     '',
     'Paste that into the Gmail search box to check it matches mail. If it returns nothing, the '
       + 'scan will find nothing.'
@@ -162,6 +177,48 @@ function showSettings() {
   }
 
   ui.alert('Current settings', lines.join('\n'), ui.ButtonSet.OK);
+}
+
+/**
+ * The blunt instrument: trash everything Gmail did not mark important.
+ *
+ * No sender analysis and no threshold — if it isn't important, isn't starred, isn't allowlisted, and
+ * you never replied to it, it goes. Deliberately manual and deliberately not on the weekly trigger.
+ */
+function runSweep() {
+  var ui = SpreadsheetApp.getUi();
+  var cfg;
+  try {
+    cfg = readConfig_();
+  } catch (err) {
+    ui.alert('Cannot read settings', err.message, ui.ButtonSet.OK);
+    return;
+  }
+
+  var query = sweepQuery_(cfg);
+  var keeping = [];
+  if (Number(cfg.SWEEP_KEEP_DAYS) > 0) {
+    keeping.push('anything from the last ' + Math.round(cfg.SWEEP_KEEP_DAYS) + ' days');
+  }
+  keeping.push('anything starred');
+  if (cfg.SWEEP_PROTECT_ATTACHMENTS) keeping.push('anything with an attachment');
+  keeping.push('threads you replied to');
+  if (cfg.ALLOWLIST) keeping.push('allowlisted senders');
+
+  var message = (cfg.DRY_RUN
+      ? 'DRY_RUN is TRUE, so this will only count what it would delete.\n\n'
+      : 'This deletes across your WHOLE mailbox, not just recent mail.\n\n')
+    + 'Keeping: ' + keeping.join(', ') + '.\n\n'
+    + 'Gmail search it will use — paste this into Gmail\'s search box first to see exactly how '
+    + 'many messages match:\n\n' + query + '\n\n'
+    + (cfg.DRY_RUN ? 'Run the count?' : 'Everything matching goes to Trash, recoverable for 30 '
+      + 'days. On a mailbox this size it may take hours and continue over several days. Proceed?');
+
+  if (ui.alert(cfg.DRY_RUN ? 'Sweep (dry run)' : 'Sweep everything not important', message,
+      ui.ButtonSet.YES_NO) !== ui.Button.YES) {
+    return;
+  }
+  startRun_('SWEEP');
 }
 
 /**
@@ -261,7 +318,8 @@ function startRun_(mode) {
   var props = PropertiesService.getScriptProperties();
   props.setProperties({
     MODE: mode,
-    PHASE: 'SCAN',
+    // The sweep needs no sender analysis, so it skips straight past scan and classify.
+    PHASE: (mode === 'SWEEP') ? 'SWEEP' : 'SCAN',
     SCAN_CURSOR: '0',
     SCAN_COUNT: '0',
     CLEAN_ROW: '2',
@@ -271,7 +329,9 @@ function startRun_(mode) {
     RUN_START: String(Date.now())
   });
   clearState_();
-  toast_(mode === 'REPORT' ? 'Scanning. The Senders tab fills in as it goes.' : 'Cleanup started.');
+  toast_(mode === 'REPORT' ? 'Scanning. The Senders tab fills in as it goes.'
+    : (mode === 'SWEEP' ? 'Sweep started. This can span hours or days on a big mailbox.'
+                        : 'Cleanup started.'));
   runPipeline();
 }
 
@@ -289,7 +349,10 @@ function runPipeline() {
     var phase = props.getProperty('PHASE') || 'SCAN';
 
     while (phase !== 'DONE' && Date.now() < deadline) {
-      if (phase === 'SCAN') {
+      if (phase === 'SWEEP') {
+        if (!sweepStep_(cfg, deadline)) break;
+        phase = 'SUMMARY';
+      } else if (phase === 'SCAN') {
         if (!scanStep_(cfg, deadline)) {
           // Out of time mid-scan. Refresh the Senders tab from what we have so far so there is
           // visible progress, then let the resume trigger pick it up.
@@ -328,6 +391,30 @@ function runPipeline() {
 function scanQuery_(cfg) {
   var days = Math.max(1, Math.round(cfg.SCAN_WEEKS * 7));
   return 'newer_than:' + days + 'd -in:sent -in:trash -in:chats -is:draft';
+}
+
+/**
+ * The mailbox-wide sweep: everything Gmail did not mark important.
+ *
+ * Unlike the threshold cleanup this does no sender analysis — importance is the whole selector, so
+ * PROTECT_IMPORTANT is irrelevant here (important mail is what's being kept). Starred mail and the
+ * allowlist are excluded in the query; replied-to threads are filtered per-thread by trashMatching_,
+ * because Gmail has no search operator for "a thread I wrote in".
+ */
+function sweepQuery_(cfg) {
+  var query = '-is:important -is:starred -in:sent -in:trash -in:chats -is:draft';
+
+  var keepDays = Number(cfg.SWEEP_KEEP_DAYS);
+  if (keepDays > 0) query += ' older_than:' + Math.round(keepDays) + 'd';
+
+  if (cfg.SWEEP_PROTECT_ATTACHMENTS) query += ' -has:attachment';
+
+  String(cfg.ALLOWLIST || '').split(/[,\n]/).forEach(function (raw) {
+    var entry = raw.trim().toLowerCase();
+    if (entry) query += ' -from:' + entry;
+  });
+
+  return query;
 }
 
 /**
@@ -552,20 +639,54 @@ function trashSender_(address, cfg, deadline, startOffset) {
   var query = 'from:' + address + ' -in:sent -in:trash -in:chats -is:draft';
   if (cfg.PROTECT_STARRED) query += ' -is:starred';
   if (cfg.PROTECT_IMPORTANT) query += ' -is:important';
+  return trashMatching_(query, cfg, deadline, startOffset);
+}
 
+/**
+ * Trashes everything a query matches, skipping threads the user took part in.
+ *
+ * Shared by the per-sender cleanup and the mailbox-wide sweep so both get the same reply protection,
+ * the same 100-thread trash batching, and the same resume behaviour.
+ */
+function trashMatching_(query, cfg, deadline, startOffset) {
+  // Progress lives out here so a quota error mid-page doesn't discard the thousands of threads this
+  // call already trashed — the throw unwinds the loop, but the counts survive in this object.
+  var progress = { trashed: 0, keptReplied: 0, done: false, offset: startOffset || 0 };
+
+  try {
+    trashMatchingUnguarded_(query, cfg, deadline, progress);
+  } catch (err) {
+    // A mailbox-wide sweep exhausts Gmail's daily allowance long before it runs out of mail. That's
+    // a pause, not a failure: keep what was done and come back in a few hours.
+    if (!isQuotaError_(err)) throw err;
+    PropertiesService.getScriptProperties().setProperty('QUOTA_PAUSED', String(Date.now()));
+    progress.quota = true;
+    progress.done = false;
+  }
+  return progress;
+}
+
+function isQuotaError_(err) {
+  var text = String((err && err.message) || err).toLowerCase();
+  return text.indexOf('too many times') !== -1
+    || text.indexOf('limit exceeded') !== -1
+    || text.indexOf('quota') !== -1
+    || text.indexOf('rate limit') !== -1;
+}
+
+function trashMatchingUnguarded_(query, cfg, deadline, progress) {
   var me = myEmail_();
-  var offset = startOffset || 0;
-  var trashed = 0;
-  var keptReplied = 0;
 
   while (true) {
     if (Date.now() > deadline) {
-      return { trashed: trashed, keptReplied: keptReplied, done: false, offset: offset };
+      progress.done = false;
+      return;
     }
 
-    var threads = GmailApp.search(query, offset, PAGE);
+    var threads = GmailApp.search(query, progress.offset, PAGE);
     if (!threads.length) {
-      return { trashed: trashed, keptReplied: keptReplied, done: true, offset: offset };
+      progress.done = true;
+      return;
     }
 
     // A one-message thread can't contain a reply, and nearly all bulk mail is one message, so
@@ -583,17 +704,18 @@ function trashSender_(address, cfg, deadline, startOffset) {
       }
     });
 
-    keptReplied += kept;
+    progress.keptReplied += kept;
 
     if (cfg.DRY_RUN) {
-      trashed += doomed.length;
-      offset += threads.length;
+      progress.trashed += doomed.length;
+      progress.offset += threads.length;
     } else {
       for (var i = 0; i < doomed.length; i += PAGE) {
         GmailApp.moveThreadsToTrash(doomed.slice(i, i + PAGE));
+        // Credit each batch as it lands, so a quota error on a later batch keeps this one counted.
+        progress.trashed += Math.min(PAGE, doomed.length - i);
       }
-      trashed += doomed.length;
-      offset += kept;
+      progress.offset += kept;
     }
   }
 }
@@ -603,6 +725,38 @@ function iReplied_(messages, me) {
   return messages.some(function (message) {
     return parseAddress_(message.getFrom()) === me;
   });
+}
+
+/* -------------------------------------------------------------------------- sweep */
+
+/**
+ * Trashes everything the sweep query matches, across the whole mailbox. Returns false if it ran out
+ * of time or hit Gmail's daily quota and needs another pass.
+ */
+function sweepStep_(cfg, deadline) {
+  var props = PropertiesService.getScriptProperties();
+
+  if (!myEmail_()) {
+    throw new Error('Could not determine your email address, so replied-to threads cannot be '
+      + 'protected. Run the sweep from the menu and re-authorize if asked.');
+  }
+
+  var offset = Number(props.getProperty('CLEAN_OFFSET') || 0);
+  var total = Number(props.getProperty('CLEAN_TOTAL') || 0);
+  var keptTotal = Number(props.getProperty('CLEAN_KEPT') || 0);
+
+  var outcome = trashMatching_(sweepQuery_(cfg), cfg, deadline, offset);
+
+  total += outcome.trashed;
+  keptTotal += outcome.keptReplied;
+  props.setProperties({
+    CLEAN_TOTAL: String(total),
+    CLEAN_KEPT: String(keptTotal),
+    CLEAN_OFFSET: String(outcome.offset),
+    HEARTBEAT: String(Date.now())
+  });
+
+  return outcome.done;
 }
 
 /* -------------------------------------------------------------------------- summary */
@@ -624,8 +778,10 @@ function summaryStep_(cfg, mode) {
   var keptReplied = Number(props.getProperty('CLEAN_KEPT') || 0);
   var started = Number(props.getProperty('RUN_START') || Date.now());
   var minutes = Math.round((Date.now() - started) / 6000) / 10;
-  var live = (mode === 'FULL' && !cfg.DRY_RUN);
-  var label = live ? 'cleanup' : (mode === 'REPORT' ? 'report only' : 'dry run');
+  var live = (mode !== 'REPORT' && !cfg.DRY_RUN);
+  var label = mode === 'REPORT' ? 'report only'
+    : (mode === 'SWEEP' ? (live ? 'sweep' : 'sweep (dry run)')
+                        : (live ? 'cleanup' : 'dry run'));
 
   // Spell out the settings that decide how much actually got deleted, so a small number is
   // self-explanatory instead of looking like a failure.
@@ -639,9 +795,14 @@ function summaryStep_(cfg, mode) {
     + ' PROTECT_IMPORTANT=' + cfg.PROTECT_IMPORTANT
     + ', PROTECT_STARRED=' + cfg.PROTECT_STARRED + '.';
 
-  // Zero scanned means the search matched nothing, which is a different problem from "found
-  // nothing worth deleting" and should not look the same in the log.
-  if (scanned === 0) {
+  // The sweep does no scanning, so a zero there is expected rather than a broken search.
+  if (mode === 'SWEEP') {
+    notes = (live ? 'Swept everything not marked important. Mail is in Trash, recoverable for 30 '
+                    + 'days.'
+                  : 'Sweep dry run — nothing deleted. ' + trashed + ' threads would go.')
+      + ' Search used: ' + sweepQuery_(cfg)
+      + '. Skipped ' + keptReplied + ' threads you had replied to.';
+  } else if (scanned === 0) {
     notes = 'WARNING: the scan matched 0 messages, so nothing could be flagged. Search used: '
       + scanQuery_(cfg) + ' — check it returns results when pasted into the Gmail search box.';
   }
@@ -740,8 +901,26 @@ function weeklyRun() {
   startRun_('FULL');
 }
 
+/**
+ * Queues the next chunk. Normally a minute out, but after a Gmail quota refusal there is no point
+ * retrying until the daily allowance rolls over, so back off for hours instead of hammering it.
+ */
 function scheduleResume_() {
   removeResumeTriggers_();
+  var props = PropertiesService.getScriptProperties();
+  var pausedAt = Number(props.getProperty('QUOTA_PAUSED') || 0);
+  var quotaPaused = pausedAt && (Date.now() - pausedAt) < 60 * 1000;
+
+  if (quotaPaused) {
+    props.deleteProperty('QUOTA_PAUSED');
+    ScriptApp.newTrigger(RESUME_FN).timeBased().after(6 * 60 * 60 * 1000).create();
+    sheet_(SHEETS.LOG).appendRow([new Date(), 'paused', '', '', '', '',
+      'Hit Gmail\'s daily limit. Progress is saved; it continues automatically in about 6 hours. '
+        + 'A full sweep of a large mailbox can take a few days this way.']);
+    toast_('Hit Gmail\'s daily limit. Continues automatically in ~6 hours.');
+    return;
+  }
+
   ScriptApp.newTrigger(RESUME_FN).timeBased().after(60 * 1000).create();
 }
 
