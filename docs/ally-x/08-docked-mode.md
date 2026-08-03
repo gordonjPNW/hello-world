@@ -138,7 +138,7 @@ If something needs manual intervention every time, that's the thing to fix.
 - [ ] Ultra High Speed HDMI cable in use
 - [ ] 100 W charger (or confirmed no throttling on 65 W)
 - [ ] Refresh rate verified, not assumed
-- [ ] Audio routes to the TV
+- [x] Audio routes to the TV
 - [ ] Docked power profile active
 - [ ] Controller paired with its own Steam config
 - [ ] Docking requires no manual setup steps
