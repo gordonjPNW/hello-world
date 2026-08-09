@@ -211,6 +211,12 @@ That pattern points at a DisplayLink-class dock — compressed video over USB, t
 60 Hz regardless of resolution — or the monitor's EDID not surviving the trip through the
 dock.
 
+Audio does route to the TV through the dock, which is worth recording but does not settle
+it. Audio capability is read from the EDID, so the sink is being described to the Ally at
+least in part — that argues against the EDID being lost outright. It does not rule out a
+DisplayLink dock, which synthesises its own EDID and carries audio perfectly well. Weak
+evidence, slightly against the EDID branch, and not a substitute for the cable test.
+
 **Test before buying anything:** run a USB-C to DisplayPort cable straight from the Ally X
 to the monitor, bypassing the dock. The USB-C port does DP alt mode at full bandwidth. If
 the supported list fills with high refresh rates, the dock is confirmed and you know what
@@ -341,6 +347,13 @@ to target one explicitly, so it cannot silently address the TV.
 - [ ] Confirm whether a `Fan 2` curve exists and mirror it.
 - [x] Validated at 17 W. ~62 fps steady over 10 minutes in Miles Morales, no clock sag.
 - [x] Efficient tested against AAA and rejected — ~25 fps in Miles Morales.
+- [x] Audio routes to the TV through the dock.
+- [x] Firmware and drivers reported up to date. Recorded as a single blanket answer, not
+      broken out per component — MCU, BIOS, Armoury Crate SE, the GPU driver and Windows
+      Update all version independently, and Armoury Crate SE in particular is the one
+      people miss because it updates separately from firmware. If a fan or power-delivery
+      oddity shows up later, re-check these individually in Update Center and MyASUS
+      before re-tuning anything here.
 - [ ] Apply the 40 fps cap, then read actual power draw on Handheld AAA. If it sits well
       below 17 W, no intermediate profile is needed.
 - [ ] Record which graphics settings and FSR level the 62 fps figure was measured at —
