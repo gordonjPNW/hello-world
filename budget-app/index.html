@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Real Budget</title>
+  <meta name="description" content="A budget app that tracks what you actually buy, including the categories other apps make you hide.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">💸</span>
+      <div>
+        <h1>Real Budget</h1>
+        <p class="tagline">Tracks what you actually buy. Stays on this device.</p>
+      </div>
+    </div>
+    <nav id="nav" class="tabs" aria-label="Sections"></nav>
+  </header>
+
+  <main id="main" class="wrap"></main>
+
+  <footer class="wrap foot">
+    <p>
+      Everything lives in this browser's local storage — no account, no bank login, no server.
+      The numbers here are arithmetic on your own history, not financial advice.
+    </p>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="insights.js"></script>
+  <script src="demo-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "real-budget",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A budget app that tracks what you actually buy, entirely on your own device.",
+  "scripts": {
+    "test": "node --test",
+    "start": "python3 -m http.server 8080"
+  }
+}
