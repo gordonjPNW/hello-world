@@ -1,0 +1,8 @@
+node_modules/
+package-lock.json
+.DS_Store
+*.log
+
+# Local CSV exports — real transaction data, never commit it
+*.csv
+!sample-*.csv

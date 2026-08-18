@@ -12,20 +12,61 @@ This one has a `🌿 Dispensary` line. And `🍸 Bars / Nightlife`, and
 `👕 Clothes`, and `🛵 Delivery`. Not to shame you — to make the number real,
 so you can decide what it's worth.
 
+## Getting it on your machine
+
+```sh
+git clone https://github.com/gordonjPNW/hello-world.git
+cd hello-world
+git checkout claude/millennial-budget-app-vzyvpy
+cd budget-app
+```
+
+You need Python 3 (for the one-line static server) and Node 18+ (only to run
+the tests). Both ship with macOS; on Windows use WSL or Git Bash. There is
+nothing to install — `npm install` would do nothing, because there are no
+dependencies.
+
 ## Running it
 
 ```sh
-cd budget-app
 npm start          # python3 -m http.server 8080
 ```
 
 Open <http://localhost:8080>. Click **Setup → Load sample history** to see
-four months of synthetic-but-realistic spending and what the app makes of it.
+four months of synthetic-but-realistic spending and what the app makes of it,
+then **Setup → Erase everything** when you want to start on your own numbers.
 
-There is no build step, no dependencies, and no server-side anything. Opening
-`index.html` straight off disk mostly works too, but browsers block
-`localStorage` on `file://` in some configurations, so your data won't
-persist — the Setup tab will warn you if that happens.
+There is no build step and no server-side anything. Opening `index.html`
+straight off disk mostly works too, but browsers block `localStorage` on
+`file://` in some configurations, so your data won't persist — the Setup tab
+will warn you if that happens.
+
+### Bookmarking it
+
+Because it's a static page with local storage, the fastest daily-use setup is
+to leave the server running and bookmark `localhost:8080`. To have it start
+on login instead of typing `npm start`:
+
+- **macOS**: `crontab -e`, then
+  `@reboot cd /path/to/budget-app && python3 -m http.server 8080`
+- **Linux**: same, or a small systemd user unit
+- **Windows (WSL)**: add the same command to your shell profile
+
+Your data lives in the browser, so it survives the server restarting. It does
+*not* survive clearing site data or switching browsers — use **Export CSV**
+for backups.
+
+## Working on it with Claude Code
+
+```sh
+cd budget-app && claude
+```
+
+`CLAUDE.md` in this folder carries the project's invariants — money is
+integer cents, the engine stays pure and clock-free, detectors need
+minimum-evidence thresholds and tests in both directions. Open the working
+directory at `budget-app/` rather than the repo root so those notes load
+(the repo root holds unrelated projects).
 
 ## Everything stays on your device
 
@@ -99,7 +140,8 @@ CSV import reads normal bank and card exports: any header naming a date, a
 description, and an amount. It figures out on its own whether your bank
 writes outflows as negative (checking) or positive (credit cards), skips
 duplicates on re-import, and reports unreadable rows without dropping the
-good ones.
+good ones. `sample-import.csv` shows the expected shape if you want to check
+yours against it before importing.
 
 Transactions without a timestamp are marked as such, and the time-sensitive
 detectors skip them rather than pretending a CSV row landed at noon.
