@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FastQuest</title>
+<meta name="description" content="A gamified intermittent fasting and eating tracker. Complete a fast, level up. Your data never leaves your device.">
+<meta name="theme-color" content="#0D1310" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F2F5F3" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FastQuest">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="stylesheet" href="./app.css">
+</head>
+<body>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="topbar__brand">
+      <h1 class="topbar__title">FastQuest</h1>
+      <span class="topbar__level" id="topbar-level">Level 1 · Sprout</span>
+    </div>
+    <button class="icon-btn" id="theme-toggle" type="button" title="Switch theme" aria-label="Switch theme">◐</button>
+  </header>
+
+  <main>
+
+    <!-- ================= HOME ================= -->
+    <section class="panel" id="panel-home" role="tabpanel" aria-labelledby="tab-home">
+
+      <div class="card hero">
+        <div class="creature-wrap" id="creature"></div>
+        <div class="stage-label" id="stage-label">Blob · Level 1</div>
+
+        <div class="ring-wrap">
+          <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+            <circle class="ring__track" cx="100" cy="100" r="88"></circle>
+            <circle class="ring__fill" id="ring-fill" cx="100" cy="100" r="88"
+                    stroke-dasharray="552.9" stroke-dashoffset="552.9"></circle>
+          </svg>
+          <div class="ring__center">
+            <div class="ring__time" id="ring-time" role="timer" aria-live="off">00:00:00</div>
+            <div class="ring__label" id="ring-label">Not fasting</div>
+          </div>
+        </div>
+
+        <div id="idle-controls">
+          <p class="muted" style="margin-bottom:.5rem">Choose a protocol and start when you're ready.</p>
+          <div class="chips" id="protocol-chips" role="group" aria-label="Fasting protocol"></div>
+          <div class="field" id="custom-hours-field" hidden style="margin-top:.6rem">
+            <label for="custom-hours">Custom length (hours)</label>
+            <input type="number" id="custom-hours" min="12" max="24" step="1" value="16" inputmode="numeric">
+          </div>
+          <div style="margin-top:.8rem">
+            <button class="btn" id="start-fast" type="button">Start fast</button>
+          </div>
+        </div>
+
+        <div id="active-controls" hidden>
+          <div class="btn-row">
+            <button class="btn btn--ghost" id="end-fast" type="button">End fast</button>
+            <button class="btn btn--warn btn--sm" id="cancel-fast" type="button" style="flex:0 0 auto">Discard</button>
+          </div>
+          <p class="tiny" style="margin-top:.6rem">Ending early still earns XP for the time you did.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="xp">
+          <div class="xp__meta">
+            <span id="xp-current">0 XP</span>
+            <span id="xp-next">100 XP to Level 2</span>
+          </div>
+          <div class="xp__track"><div class="xp__fill" id="xp-fill" style="width:0%"></div></div>
+        </div>
+        <div class="stat-row" style="margin-top:1rem">
+          <div class="stat">
+            <div class="stat__value" id="stat-streak">0</div>
+            <div class="stat__label">Streak</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value" id="stat-fasts">0</div>
+            <div class="stat__label">Fasts</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value" id="stat-score">—</div>
+            <div class="stat__label">Avg meal</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__head"><h2>Today</h2><span class="muted" id="today-date"></span></div>
+        <ul class="list" id="today-list"></ul>
+      </div>
+
+    </section>
+
+    <!-- ================= LOG ================= -->
+    <section class="panel" id="panel-log" role="tabpanel" aria-labelledby="tab-log" hidden>
+
+      <div class="card">
+        <div class="card__head">
+          <h2 id="meal-form-title">Log a meal</h2>
+          <button class="link-btn" id="cancel-edit" type="button" hidden>Cancel edit</button>
+        </div>
+        <p class="muted">Tap what was in it. No weighing, no counting.</p>
+
+        <h3 style="margin:.8rem 0 .4rem">Good stuff</h3>
+        <div class="chips" id="tags-good" role="group" aria-label="Positive meal tags"></div>
+
+        <h3 style="margin:.9rem 0 .4rem">Watch out for</h3>
+        <div class="chips" id="tags-bad" role="group" aria-label="Negative meal tags"></div>
+
+        <div class="score-preview">
+          <div class="score-preview__num" id="score-num">5</div>
+          <div class="score-preview__bar">
+            <div class="score-preview__fill" id="score-fill" style="width:50%"></div>
+          </div>
+          <div class="tiny" id="score-xp">+15 XP</div>
+        </div>
+
+        <details class="disclosure">
+          <summary>Add details (optional)</summary>
+          <div>
+            <p class="tiny" style="margin-bottom:.6rem">
+              Recorded and charted, never scored. There is no calorie target in this app.
+            </p>
+            <div class="field">
+              <label for="meal-kcal">Calories</label>
+              <input type="number" id="meal-kcal" min="0" max="20000" step="10" inputmode="numeric" placeholder="—">
+            </div>
+            <div class="field">
+              <label for="meal-protein">Protein (g)</label>
+              <input type="number" id="meal-protein" min="0" max="1000" step="1" inputmode="numeric" placeholder="—">
+            </div>
+            <div class="field">
+              <label for="meal-note">Note</label>
+              <input type="text" id="meal-note" maxlength="140" placeholder="Chicken and rice bowl">
+            </div>
+            <div class="field">
+              <label for="meal-time">When</label>
+              <input type="datetime-local" id="meal-time">
+            </div>
+          </div>
+        </details>
+
+        <button class="btn" id="save-meal" type="button" style="margin-top:.6rem">Log meal</button>
+      </div>
+
+      <div class="card">
+        <div class="card__head"><h2>Recent meals</h2></div>
+        <ul class="list" id="meal-list"></ul>
+      </div>
+
+    </section>
+
+    <!-- ================= STATS ================= -->
+    <section class="panel" id="panel-stats" role="tabpanel" aria-labelledby="tab-stats" hidden>
+
+      <div class="card">
+        <div class="stat-row">
+          <div class="stat">
+            <div class="stat__value" id="stat-completion">—</div>
+            <div class="stat__label">Completed</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value" id="stat-longest">—</div>
+            <div class="stat__label">Longest</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value" id="stat-best-streak">0</div>
+            <div class="stat__label">Record</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__head"><h2>Fasts</h2><span class="muted">last 30</span></div>
+        <div class="chart-scroll"><div id="fast-chart"></div></div>
+        <p class="tiny" style="margin-top:.5rem">Solid bars reached their target. The dashed line is the target length.</p>
+      </div>
+
+      <div class="card">
+        <div class="card__head"><h2>Meal scores</h2><span class="muted">daily average</span></div>
+        <div class="chart-scroll"><div id="meal-chart"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card__head"><h2>Fast history</h2></div>
+        <ul class="list" id="fast-list"></ul>
+      </div>
+
+    </section>
+
+    <!-- ================= PROFILE ================= -->
+    <section class="panel" id="panel-profile" role="tabpanel" aria-labelledby="tab-profile" hidden>
+
+      <div class="card">
+        <div class="card__head"><h2>Badges</h2><span class="muted" id="badge-count">0 / 12</span></div>
+        <div class="badge-grid" id="badge-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card__head"><h2>Settings</h2></div>
+        <div class="field">
+          <label for="default-protocol">Default protocol</label>
+          <select id="default-protocol"></select>
+        </div>
+        <div class="field">
+          <label for="default-custom-hours">Custom length (hours)</label>
+          <input type="number" id="default-custom-hours" min="12" max="24" step="1" value="16" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label for="theme-select">Theme</label>
+          <select id="theme-select">
+            <option value="system">Match system</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__head"><h2>Your data</h2></div>
+        <p class="muted">
+          Everything lives in this browser only — no account, no server, nothing uploaded.
+          That also means clearing site data wipes it, so export a backup now and then.
+        </p>
+        <div class="btn-row" style="margin-top:.6rem">
+          <button class="btn btn--ghost btn--sm" id="export-data" type="button">Export JSON</button>
+          <button class="btn btn--ghost btn--sm" id="import-data" type="button">Import JSON</button>
+        </div>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+        <div style="margin-top:.6rem">
+          <button class="btn btn--warn btn--sm" id="reset-data" type="button">Reset everything</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="notice notice--warn" style="margin:0">
+          <strong>Not medical advice.</strong> Talk to a doctor before starting intermittent fasting —
+          especially if you are pregnant or breastfeeding, take medication for diabetes or blood
+          pressure, are under 18, or have any history of disordered eating. If a fast makes you feel
+          faint or unwell, end it and eat.
+        </div>
+      </div>
+
+      <footer class="disclaimer">
+        FastQuest · XP is capped at 24 hours by design. This app will never reward fasting longer
+        or eating less.
+      </footer>
+
+    </section>
+
+  </main>
+
+  <nav class="tabbar" role="tablist" aria-label="Sections">
+    <button class="tab" id="tab-home" role="tab" data-panel="home" aria-selected="true" aria-controls="panel-home" type="button">
+      <span aria-hidden="true">◍</span><span>Home</span>
+    </button>
+    <button class="tab" id="tab-log" role="tab" data-panel="log" aria-selected="false" aria-controls="panel-log" type="button">
+      <span aria-hidden="true">✚</span><span>Log</span>
+    </button>
+    <button class="tab" id="tab-stats" role="tab" data-panel="stats" aria-selected="false" aria-controls="panel-stats" type="button">
+      <span aria-hidden="true">▤</span><span>Stats</span>
+    </button>
+    <button class="tab" id="tab-profile" role="tab" data-panel="profile" aria-selected="false" aria-controls="panel-profile" type="button">
+      <span aria-hidden="true">★</span><span>You</span>
+    </button>
+  </nav>
+
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
