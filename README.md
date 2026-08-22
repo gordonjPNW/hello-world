@@ -10,6 +10,11 @@ A simple starter project.
 
 ## Tools
 
+- **[FastQuest](fastquest/README.md)** — a gamified intermittent-fasting and eating tracker.
+  Hold a fast, tap a few tags to score a meal, and level up a creature that evolves as you
+  go. Installs to your phone as a PWA, works offline, and keeps all its data in your own
+  browser.
+
 - **[Gmail bulk-mail cleanup](gmail-cleanup/README.md)** — a Google Apps Script that trashes every
   sender who mails you more than three times a week and emails you the list with unsubscribe links.
   Runs weekly on its own, and copies to another person's account with a single link.
