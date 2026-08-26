@@ -8,6 +8,9 @@ A simple starter project.
   ASUS ROG Ally X (2024) on Windows 11 + Steam, covering handheld and docked use. Start with the
   [overview](docs/ally-x/00-overview.md).
 
+- **[Pixel Watch 3 listing kit](docs/pixel-watch-3-listing.md)** — copy-paste listing copy, pricing
+  research, and a pre-sale checklist for reselling a Verizon Pixel Watch 3 (45mm, LTE).
+
 ## Tools
 
 - **[Gmail bulk-mail cleanup](gmail-cleanup/README.md)** — a Google Apps Script that trashes every
