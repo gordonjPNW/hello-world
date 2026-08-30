@@ -264,6 +264,29 @@ foreach ($tool in @(
     }
 }
 
+# Windows ships stub executables for python.exe and python3.exe that open the
+# Microsoft Store instead of running Python. They sit in WindowsApps and shadow
+# a real install if they come first on PATH, producing a `python` that exists,
+# runs, and reports nothing.
+$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+if ($pythonCmd -and $pythonCmd.Source -like '*\WindowsApps\*') {
+    Write-Warn "python resolves to the Microsoft Store stub at $($pythonCmd.Source)"
+    Write-Info "fix: Settings > Apps > Advanced app settings > App execution aliases,"
+    Write-Info "     turn OFF 'python.exe' and 'python3.exe', then open a new terminal."
+    Write-Info "meanwhile 'py' launches the real Python if one is installed"
+
+    if (Test-Command 'py') {
+        try {
+            $pyVersion = (& py --version 2>&1 | Select-Object -First 1)
+            Write-Ok "py works: $pyVersion"
+        } catch {
+            Write-Warn "py is present but did not report a version either"
+        }
+    } else {
+        Write-Fail "no working Python found - allytune needs one"
+    }
+}
+
 # Memory Integrity gates the low-level driver that phase 2 power control needs.
 try {
     $hvci = Get-CimInstance -ClassName Win32_DeviceGuard `
