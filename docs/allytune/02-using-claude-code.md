@@ -194,6 +194,24 @@ Copying commands from a phone or another machine does not always work. Three way
 Prefer Windows Terminal. Press the Windows key, type `terminal`, right-click, run as administrator.
 It handles paste, tabs and scrolling far better than the legacy Command Prompt.
 
+## Logging in
+
+The first time you run `claude`, a browser opens and gives you a **verification code** to paste
+back into the terminal. This is the step most likely to trip you up, because it is the one time you
+have to move text into the terminal.
+
+1. In the browser, select the code and press **Ctrl+C** (on touch: long-press, then Copy).
+2. In the terminal, paste it — **Ctrl+V** in Windows Terminal, **right-click** in Command Prompt.
+3. Press **Enter**.
+
+If paste refuses to work, you are almost certainly in Command Prompt. Use Windows Terminal instead;
+see the section above.
+
+**The code is a credential.** It logs in as you. Do not paste it into a chat, a document, or
+anywhere other than the terminal that asked for it. If it does end up somewhere it should not,
+nothing needs cleaning up — just abandon that login and start a new one by running `claude` again.
+Codes are single-use and expire quickly.
+
 ## A normal session, start to finish
 
 ```
