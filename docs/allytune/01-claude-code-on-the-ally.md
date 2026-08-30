@@ -1,33 +1,40 @@
 # Getting Claude Code onto the Ally X
 
-The install itself is one command. The part worth planning is **where you type**, because a 7"
-touchscreen with no keyboard is a bad place to drive a terminal — and during a tuning session the
-handheld is running a game full-screen while commands need to be issued against it.
-
-Solve that first and the rest is routine.
+The install itself is one command. The part worth planning is **where you type during a tuning
+run**, because the handheld will be running a game full-screen at a fixed camera position, and
+anything that pulls focus away from it destroys the measurement.
 
 ## Where you type
 
-Three arrangements, and you will likely use two of them.
+You have on-screen keyboards, so all three of these work. They differ in what they cost you
+*during a capture*.
 
 | | How | Good for | Cost |
 |---|---|---|---|
-| **Docked** | Ally in the dock, keyboard and mouse on the Alienware | First-time setup, writing code, anything long | Not usable while playing handheld |
-| **SSH from another machine** | Laptop or desktop drives the Ally over the network | **Tuning sessions.** Game stays full-screen on the handheld; commands land from elsewhere | Needs one-time SSH setup |
-| **On the handheld** | Windows Terminal + the on-screen keyboard | Emergencies only | Miserable to type on, steals the screen from the game |
+| **On the handheld** | Windows Terminal + on-screen keyboard | Setup, quick checks, anything between runs | Steals the screen from the game — unusable mid-capture |
+| **Docked** | Ally in the dock, keyboard and mouse on the Alienware | Writing code, long sessions, comfort | Not available while playing handheld |
+| **SSH from another machine** | Laptop or desktop drives the Ally over the network | **Tuning sessions** | One-time setup |
 
-**Recommended: dock for setup, SSH for sessions.** During a sweep the Ally is being held, in a game,
-at a fixed camera position — you cannot alt-tab to a terminal without destroying the measurement.
-SSH keeps the game untouched and the terminal somewhere you can actually type.
+Any of them is fine for installing and configuring. Do it on the handheld with the OSK if that is
+what is in front of you.
 
-The bootstrap script sets SSH up for you with `-EnableSsh`.
+**SSH earns its place during runs, not during setup.** A 90-second capture requires the game to
+hold foreground and a steady frame rate for the whole window. Tabbing to a terminal to start or
+stop a run drops the game out of focus, changes what the GPU is doing, and puts a spike in exactly
+the frametime data the run exists to collect. Typing from another machine sidesteps that entirely —
+the Ally never knows you are there.
 
-Later, the allytune web UI (phase 4) covers the third case properly: start and stop a run by
-tapping a button on the Ally's own screen or from your phone, no terminal at all.
+The bootstrap script sets SSH up for you with `-EnableSsh`. It is worth the five minutes even
+though you can type on the device.
+
+The allytune web UI (phase 4) is the other answer to the same problem: a touch target on the Ally's
+own screen or your phone to start and stop a run, with the game still in front. Between SSH and
+that, you should never need to alt-tab during a capture.
 
 ## Setup
 
-Dock the Ally, connect a keyboard and mouse, and open **Windows Terminal as Administrator**.
+Open **Windows Terminal as Administrator** — on the handheld with the on-screen keyboard, or
+docked with a keyboard if you would rather. Either is fine for this part.
 
 Administrator matters and keeps mattering. PresentMon needs it to open an ETW trace, and phase 2
 power control needs it to talk to the SMU. A non-elevated session will fail at the first real
@@ -93,8 +100,8 @@ The bootstrap script prints the Ally's addresses at the end. Once connected, `cd
 run `claude` there — same session, typed from a real keyboard, with the handheld free to run the
 game.
 
-Worth doing while you are still docked and can fix it easily, rather than discovering it is broken
-at the start of a tuning session.
+Worth confirming now, while a broken SSH setup is a minor annoyance, rather than at the start of a
+tuning session when it is the thing standing between you and a clean capture.
 
 ## Interruptions
 
