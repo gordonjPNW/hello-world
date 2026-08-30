@@ -4,17 +4,25 @@ This is the brief for a Claude Code session running **on the Ally X itself**, wh
 available. The planning and setup were done in a remote session with no device access; everything
 below needs the real machine.
 
-To use it, from the project folder on the Ally:
+To use it, from the project folder on the Ally, type:
 
 ```
-claude
+tune
 ```
 
-then type:
+That is the whole command. `tune.cmd` starts Claude Code and hands it this brief, so there is
+nothing to paste or type out — which matters on a handheld with an on-screen keyboard and no shared
+clipboard.
+
+Also available:
 
 ```
-Read docs/allytune/03-handoff-prompt.md and carry it out.
+tune resume     reopen the most recent conversation
+tune doctor     installation health check, no session
 ```
+
+The long way, if you prefer it, is `claude` followed by
+`Read docs/allytune/03-handoff-prompt.md and carry it out.`
 
 ---
 

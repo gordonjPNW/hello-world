@@ -169,17 +169,42 @@ cold.
 
 ---
 
+## The shortcut
+
+Typing is the slow part on a handheld, so the repo has `tune.cmd`. From the project folder:
+
+| Type this | What happens |
+|---|---|
+| `tune` | Starts Claude Code and hands it the current work brief |
+| `tune resume` | Reopens the most recent conversation |
+| `tune doctor` | Health check, no session |
+
+Four characters instead of a sentence. If `claude` is not on PATH it tells you exactly how to fix
+it rather than failing with a Windows error.
+
+## Pasting into the terminal
+
+Copying commands from a phone or another machine does not always work. Three ways in:
+
+- **Windows Terminal** — `Ctrl+V`. This is the modern one, and the bootstrap script installs it.
+- **Command Prompt (the older black window)** — **right-click** pastes. `Ctrl+V` may not.
+- **Neither works** — use `tune`, or open this repo's docs on the device itself and read the
+  commands from there.
+
+Prefer Windows Terminal. Press the Windows key, type `terminal`, right-click, run as administrator.
+It handles paste, tabs and scrolling far better than the legacy Command Prompt.
+
 ## A normal session, start to finish
 
 ```
 1. Windows key → type "terminal" → right-click → Run as administrator
 2. cd C:\Users\gordo\Documents\Claude\hello-world
-3. claude --continue        (or just: claude, for a fresh start)
+3. tune                     (or: tune resume, to pick up where you left off)
 4. ...work...
 5. /exit
 ```
 
-Five lines. That is the whole routine.
+Five lines, and only one of them is longer than a word.
 
 ---
 
