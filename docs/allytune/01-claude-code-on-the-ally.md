@@ -140,9 +140,21 @@ options the reference doc already flags as needed, so it can stop silently addre
 
 ## Troubleshooting
 
-**`claude` not recognised after install.** PATH was updated but your shell predates the change.
-Open a new terminal. If it persists, confirm `C:\Users\gordo\.local\bin` is on PATH — that is where
-the native installer puts the binary.
+**`claude` not recognised after install.** The native installer puts the binary in
+`C:\Users\gordo\.local\bin` but does not reliably add that directory to the user PATH — it prints a
+setup note saying so and then reports success anyway. The bootstrap script now repairs this itself,
+so re-running it fixes the problem. To do it by hand:
+
+```powershell
+$bin = "$env:USERPROFILE\.local\bin"
+$user = [Environment]::GetEnvironmentVariable('Path','User')
+if ($user -notlike "*$bin*") {
+  [Environment]::SetEnvironmentVariable('Path', ($user.TrimEnd(';') + ';' + $bin), 'User')
+}
+```
+
+Either way, open a **new** terminal afterwards. A PATH change never reaches a shell that was
+already running.
 
 **`irm` is not recognised.** You are in CMD, not PowerShell. The prompt shows `PS C:\` in
 PowerShell. Use the CMD form instead:

@@ -68,6 +68,26 @@ function Update-SessionPath {
     $env:Path = ($machine, $user | Where-Object { $_ }) -join ';'
 }
 
+# The native Claude Code installer drops claude.exe into ~\.local\bin but does
+# not always add that directory to the user PATH, so a fresh install can finish
+# successfully and still leave `claude` unavailable in every new terminal.
+function Add-UserPathEntry {
+    param([Parameter(Mandatory)] $Directory)
+
+    $current = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $entries = @()
+    if ($current) { $entries = $current -split ';' | Where-Object { $_ } }
+
+    if ($entries -contains $Directory) {
+        Write-Ok "$Directory already on the user PATH"
+        return
+    }
+
+    [Environment]::SetEnvironmentVariable('Path', (($entries + $Directory) -join ';'), 'User')
+    Write-Ok "added $Directory to the user PATH"
+    Update-SessionPath
+}
+
 function Install-WingetPackage {
     param(
         [Parameter(Mandatory)] $Id,
@@ -158,17 +178,25 @@ if (-not $SkipClaude) {
         try {
             Invoke-Expression (Invoke-RestMethod 'https://claude.ai/install.ps1')
             Update-SessionPath
-            if (Test-Command 'claude') {
-                Write-Ok "Claude Code installed"
-            } else {
-                Write-Warn "installer ran but 'claude' is not on PATH yet - open a new terminal and check"
-            }
+            Write-Ok "Claude Code installed"
         } catch {
             Write-Fail "Claude Code install failed: $($_.Exception.Message)"
         }
     }
 } else {
     Write-Info "skipping Claude Code (-SkipClaude)"
+}
+
+# Repair PATH regardless of whether this run installed Claude Code - an earlier
+# run may have installed it and left PATH untouched.
+$claudeBin = Join-Path $env:USERPROFILE '.local\bin'
+if (Test-Path (Join-Path $claudeBin 'claude.exe')) {
+    Add-UserPathEntry -Directory $claudeBin
+    if (Test-Command 'claude') {
+        Write-Ok "claude resolves on PATH"
+    } else {
+        Write-Warn "claude installed and PATH updated - open a NEW terminal to pick it up"
+    }
 }
 
 # ---------------------------------------------------------------------- ssh
