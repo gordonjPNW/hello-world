@@ -10,6 +10,8 @@ To use it, from the project folder on the Ally, type:
 tune
 ```
 
+In PowerShell, write `.\tune` — it will not run a script from the current folder without it.
+
 That is the whole command. `tune.cmd` starts Claude Code and hands it this brief, so there is
 nothing to paste or type out — which matters on a handheld with an on-screen keyboard and no shared
 clipboard.

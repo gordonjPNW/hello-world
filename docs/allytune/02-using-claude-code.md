@@ -182,6 +182,13 @@ Typing is the slow part on a handheld, so the repo has `tune.cmd`. From the proj
 Four characters instead of a sentence. If `claude` is not on PATH it tells you exactly how to fix
 it rather than failing with a Windows error.
 
+**In PowerShell, write `.\tune` instead of `tune`.** PowerShell refuses to run a program from the
+folder you are standing in unless you say so explicitly, as a precaution against a malicious file
+shadowing a real command. Command Prompt has no such rule, so plain `tune` works there. You will
+know which you are in from the prompt: `PS C:\...` is PowerShell.
+
+If you forget, the error is `The term 'tune' is not recognized`. Add the `.\` and try again.
+
 ## Pasting into the terminal
 
 Copying commands from a phone or another machine does not always work. Three ways in:
@@ -193,6 +200,25 @@ Copying commands from a phone or another machine does not always work. Three way
 
 Prefer Windows Terminal. Press the Windows key, type `terminal`, right-click, run as administrator.
 It handles paste, tabs and scrolling far better than the legacy Command Prompt.
+
+## The trust prompt
+
+The first time Claude Code runs in a folder, it asks whether you trust it, and shows the path at
+the top as **"Accessing Workspace"**.
+
+**Read that path before answering.** It tells you which folder Claude is about to work in, and it
+is whatever folder your terminal was standing in when you typed the command — not necessarily the
+one you meant.
+
+- Path is `C:\Users\gordo\Documents\Claude\hello-world` → **Yes, I trust this folder**.
+- Path is anything else, especially `C:\Users\gordo` → **No, exit**. Then `cd` to the project and
+  start again.
+
+Starting from your home folder is the common mistake. It gives Claude the run of your whole user
+profile, and it leaves it without the repo, so `CLAUDE.md` never loads and none of the project
+context is there. Nothing breaks, but you get a Claude that knows nothing about the work.
+
+You are only asked once per folder.
 
 ## Logging in
 
