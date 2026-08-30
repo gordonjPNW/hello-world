@@ -12,9 +12,9 @@
     Idempotent. Everything is checked before it is installed, so re-running is
     safe and cheap.
 
-    Capture tooling (PresentMon, LibreHardwareMonitor) is deliberately NOT
-    installed here - it arrives with allytune phase 1, which pins and verifies
-    specific versions.
+    Capture tooling (PresentMon, LibreHardwareMonitor) is pinned by version and
+    SHA-256 hash, and discarded if the hash does not match. PresentMon emits
+    different CSV columns per version, so this pinning is load-bearing.
 
 .PARAMETER EnableSsh
     Install and start the Windows OpenSSH server, and open the firewall port.
@@ -58,6 +58,67 @@ function Test-Admin {
 function Test-Command {
     param($Name)
     $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+# Windows ships zero-byte stub executables for python.exe and python3.exe that
+# open the Microsoft Store rather than running anything. They live in
+# WindowsApps and satisfy Get-Command perfectly, so a plain Test-Command check
+# reports Python as "already present" and the real install gets skipped. This
+# happened on this device: python.exe existed, was 0 bytes, and exited 9009.
+function Test-RealPython {
+    $cmd = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $cmd) { return $false }
+    if ($cmd.Source -like '*\WindowsApps\*') {
+        $file = Get-Item $cmd.Source -ErrorAction SilentlyContinue
+        if (-not $file -or $file.Length -eq 0) { return $false }
+    }
+    try {
+        $null = & $cmd.Source --version 2>&1
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
+}
+
+# Downloads a pinned file and refuses to keep it if the hash does not match.
+# Pinning matters here beyond the usual supply-chain argument: PresentMon's CSV
+# column names change between versions, so an unpinned download would silently
+# change the schema the parser sees.
+function Get-PinnedFile {
+    param(
+        [Parameter(Mandatory)] $Url,
+        [Parameter(Mandatory)] $Destination,
+        [Parameter(Mandatory)] $Sha256,
+        [Parameter(Mandatory)] $Label
+    )
+
+    if (Test-Path $Destination) {
+        $have = (Get-FileHash $Destination -Algorithm SHA256).Hash
+        if ($have -eq $Sha256) {
+            Write-Ok "$Label already present and verified"
+            return $true
+        }
+        Write-Warn "$Label present but hash differs - re-downloading"
+        Remove-Item $Destination -Force
+    }
+
+    Write-Info "downloading $Label"
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing -TimeoutSec 300
+    } catch {
+        Write-Fail "$Label download failed: $($_.Exception.Message)"
+        return $false
+    }
+
+    $got = (Get-FileHash $Destination -Algorithm SHA256).Hash
+    if ($got -ne $Sha256) {
+        Remove-Item $Destination -Force
+        Write-Fail "$Label hash mismatch - expected $Sha256, got $got. File discarded."
+        return $false
+    }
+
+    Write-Ok "$Label downloaded and hash verified"
+    return $true
 }
 
 # PATH changes made by installers do not reach the running shell. Rebuild it
@@ -166,7 +227,12 @@ Write-Step "Installing toolchain"
 # PowerShell only.
 Install-WingetPackage -Id 'Git.Git' -Label 'Git for Windows' -VerifyCommand 'git' | Out-Null
 
-Install-WingetPackage -Id 'Python.Python.3.12' -Label 'Python 3.12' -VerifyCommand 'python' | Out-Null
+if (Test-RealPython) {
+    Write-Ok "Python already present"
+} else {
+    Write-Info "no working Python (the Microsoft Store stub does not count)"
+    Install-WingetPackage -Id 'Python.Python.3.12' -Label 'Python 3.12' | Out-Null
+}
 
 Install-WingetPackage -Id 'Microsoft.WindowsTerminal' -Label 'Windows Terminal' | Out-Null
 
@@ -197,6 +263,62 @@ if (Test-Path (Join-Path $claudeBin 'claude.exe')) {
     } else {
         Write-Warn "claude installed and PATH updated - open a NEW terminal to pick it up"
     }
+}
+
+# -------------------------------------------------------------- capture tools
+
+Write-Step "Installing capture tools"
+
+# Both versions are pinned. PresentMon in particular emits three different CSV
+# column sets depending on how it is invoked, and the names differ between
+# releases, so allytune parses against a known version rather than whatever is
+# current. Hashes were taken from the files this project actually tested with.
+$toolsDir = Join-Path (Split-Path $PSScriptRoot -Parent) 'tools'
+if (-not (Test-Path $toolsDir)) { New-Item -ItemType Directory -Path $toolsDir | Out-Null }
+
+$pmExe = Join-Path $toolsDir 'PresentMon-2.5.1-x64.exe'
+Get-PinnedFile `
+    -Url 'https://github.com/GameTechDev/PresentMon/releases/download/v2.5.1/PresentMon-2.5.1-x64.exe' `
+    -Destination $pmExe `
+    -Sha256 '9BEC3083069F58F911E6A512F4806DB51A27BD096103087BC1D05EF54C80A191' `
+    -Label 'PresentMon 2.5.1 (CLI)' | Out-Null
+
+# The 0.9 MB console build, not the 150 MB MSI: allytune only drives the CLI.
+
+$lhmZip = Join-Path $toolsDir 'LibreHardwareMonitor-0.9.6.zip'
+$lhmDir = Join-Path $toolsDir 'LibreHardwareMonitor'
+if (Get-PinnedFile `
+        -Url 'https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases/download/v0.9.6/LibreHardwareMonitor.zip' `
+        -Destination $lhmZip `
+        -Sha256 '086D9F1B5A99E643EDC2CFAAAC16051685B551E4C5AC0B32A57C58C0E529C001' `
+        -Label 'LibreHardwareMonitor 0.9.6') {
+
+    if (-not (Test-Path (Join-Path $lhmDir 'LibreHardwareMonitor.exe'))) {
+        Expand-Archive -Path $lhmZip -DestinationPath $lhmDir -Force
+    }
+    Write-Ok "LibreHardwareMonitor extracted to tools\LibreHardwareMonitor"
+
+    # Pre-seed the config so the JSON web server is on without anyone having to
+    # find it in the GUI on a 7" touchscreen. LHM rewrites this file on exit.
+    $lhmConfig = Join-Path $lhmDir 'LibreHardwareMonitor.config'
+    if (-not (Test-Path $lhmConfig)) {
+        @'
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <appSettings>
+    <add key="runWebServerMenuItem" value="true" />
+    <add key="listenerPort" value="8085" />
+    <add key="minTrayMenuItem" value="true" />
+  </appSettings>
+</configuration>
+'@ | Out-File -FilePath $lhmConfig -Encoding utf8
+        Write-Ok "LibreHardwareMonitor web server pre-configured on port 8085"
+    }
+
+    # LibreHardwareMonitor's manifest REQUIRES elevation - it will not start at
+    # all from a normal user session, it just shows a UAC prompt. Verified on
+    # this device. PresentMon, by contrast, captures fine unelevated.
+    Write-Info "LibreHardwareMonitor must be launched as Administrator to run at all"
 }
 
 # ---------------------------------------------------------------------- ssh

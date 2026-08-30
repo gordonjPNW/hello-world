@@ -19,6 +19,7 @@ from allytune.analysis import metrics as M
 from allytune.analysis import noise as N
 from allytune.capture import runner
 from allytune.inventory import device
+from allytune.telemetry import sensors
 
 
 def _out(obj, as_json: bool, human):
@@ -109,15 +110,55 @@ def _print_metrics(m, prefix="  "):
         print(prefix + "note: " + n)
 
 
+def _print_telemetry(cap, prefix="  "):
+    t = getattr(cap, "telemetry_summary", None)
+    if t is None:
+        return
+    print()
+    print("Telemetry")
+    print("=" * 74)
+    print(prefix + "sources            " + (", ".join(t.sources) or "none"))
+    print(prefix + "samples            " + str(t.samples) + " over "
+          + format(t.duration_s, ".0f") + " s")
+    if t.system_power_w_mean is not None:
+        print(prefix + "system power       " + format(t.system_power_w_mean, ".2f")
+              + " W mean (whole device, from the battery)")
+    if t.package_power_w_mean is not None:
+        print(prefix + "APU package power  " + format(t.package_power_w_mean, ".2f")
+              + " W mean, " + format(t.package_power_w_max or 0, ".2f") + " W peak")
+    if t.cpu_temp_c_mean is not None:
+        print(prefix + "CPU temperature    " + format(t.cpu_temp_c_mean, ".1f")
+              + " C mean, " + format(t.cpu_temp_c_max or 0, ".1f") + " C peak")
+    if t.gpu_clock_mhz_mean is not None:
+        print(prefix + "GPU clock          " + format(t.gpu_clock_mhz_mean, ".0f") + " MHz mean")
+    if t.battery_pct_start is not None:
+        print(prefix + "battery            " + str(t.battery_pct_start) + "% -> "
+              + str(t.battery_pct_end) + "%")
+    for n in t.notes:
+        print(prefix + "note: " + n)
+
+
 def _capture_once(args, inv, label):
-    cap = runner.capture(
-        seconds=args.seconds,
-        process_name=args.process,
-        output_dir=args.output_dir,
-        metrics_version=args.metrics_version,
-        label=label,
-        configuration=inv.configuration,
-    )
+    # Telemetry runs alongside the capture rather than around it, so power and
+    # temperature are attributable to the same window as the frametimes.
+    sampler = sensors.Sampler(interval=args.telemetry_interval).start()
+    try:
+        cap = runner.capture(
+            seconds=args.seconds,
+            process_name=args.process,
+            output_dir=args.output_dir,
+            metrics_version=args.metrics_version,
+            label=label,
+            configuration=inv.configuration,
+        )
+    except runner.NoFramesCaptured as e:
+        # An expected condition, not a bug in the rig: report it as advice
+        # rather than as a traceback. The `finally` below stops the sampler.
+        raise SystemExit(str(e))
+    finally:
+        sampler.stop()
+    cap.telemetry = [s.as_dict() for s in sampler.samples]
+    cap.telemetry_summary = sampler.summary()
     if not cap.frames:
         raise SystemExit(
             "No frames captured for process " + repr(args.process) + ".\n"
@@ -150,6 +191,7 @@ def cmd_measure(args) -> int:
         print("Metrics")
         print("=" * 74)
         _print_metrics(m)
+        _print_telemetry(cap)
 
     _out(entry, args.json, human)
     return 0
@@ -340,7 +382,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="executable to analyse; empty string means all")
         sp.add_argument("--game", default="Uncharted 4", help="label for the results store")
         sp.add_argument("--output-dir", default="captures", help="where CSVs are written")
-        sp.add_argument("--metrics-version", default="v2", choices=["v1", "v2"],
+        sp.add_argument("--telemetry-interval", type=float, default=2.0,
+                        help="seconds between telemetry samples (default 2)")
+        sp.add_argument("--metrics-version", default="default",
+                        choices=["default", "v1", "v2"],
                         help="PresentMon metric set to request")
 
     sp = sub.add_parser("inventory", help="dump device facts")

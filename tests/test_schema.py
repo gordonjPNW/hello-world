@@ -1,10 +1,16 @@
 """Tests for PresentMon CSV parsing.
 
-The headers below are verbatim from PresentMon 2.5.1 running on the Ally X on
-2026-08-30, captured with --v2_metrics and --v1_metrics respectively. They are
-not reconstructed from documentation, which is the whole reason this file
-exists: the handoff brief guessed the 2.x names as 'FrameTime' and 'GPUBusy'
-and both guesses were wrong.
+Every header below is verbatim from PresentMon 2.5.1 running on this Ally X on
+2026-08-30, captured three ways: with no metrics flag, with --v2_metrics, and
+with --v1_metrics. They are not reconstructed from documentation, which is the
+whole reason this file exists.
+
+The binary emits three distinct column sets, and the difference between them is
+not cosmetic -- the timestamp column changes units as well as name. The handoff
+brief predicted two schemas and named the 2.x columns 'FrameTime'/'GPUBusy';
+those names are real but belong to the --v2_metrics invocation, while the
+default invocation (the one you get by passing no flag) uses 'MsBetweenPresents'
+and 'MsGPUBusy' and matches neither prediction.
 """
 
 import csv
@@ -13,7 +19,7 @@ import unittest
 
 from allytune.capture.schema import Frame, SchemaError, detect_schema, parse_rows
 
-V2_HEADER = (
+DEFAULT_HEADER = (
     "Application,ProcessID,SwapChainAddress,PresentRuntime,SyncInterval,PresentFlags,"
     "AllowsTearing,PresentMode,TimeInMs,MsBetweenSimulationStart,MsBetweenPresents,"
     "MsBetweenDisplayChange,MsInPresentAPI,MsRenderPresentLatency,MsUntilDisplayed,"
@@ -22,7 +28,7 @@ V2_HEADER = (
     "MsAllInputToPhotonLatency,MsClickToPhotonLatency"
 )
 
-V2_ROW = (
+DEFAULT_ROW = (
     "u4.exe,7980,0x1F2764AB3D0,DXGI,0,0,0,Hardware Composed: Independent Flip,"
     "10.9976,NA,8.17780000000000,8.34910000000000,1.15240000000000,0.99050000000000,"
     "6.7994,4.2401,7.9099,6.7575,1.1524,7.3235,0.4245,7.9000,0.0000,NA,4.2401,NA,NA,NA"
@@ -47,7 +53,7 @@ def rows(header, *body):
 
 class TestDetect(unittest.TestCase):
     def test_detects_v2(self):
-        self.assertEqual(detect_schema(V2_HEADER.split(",")), "v2")
+        self.assertEqual(detect_schema(DEFAULT_HEADER.split(",")), "default")
 
     def test_detects_v1(self):
         self.assertEqual(detect_schema(V1_HEADER.split(",")), "v1")
@@ -63,12 +69,12 @@ class TestDetect(unittest.TestCase):
         timestamp by 1000 (or fail to), silently corrupting every duration.
         """
         self.assertEqual(detect_schema(["msBetweenPresents"]), "v1")
-        self.assertEqual(detect_schema(["MsBetweenPresents"]), "v2")
+        self.assertEqual(detect_schema(["MsBetweenPresents"]), "default")
 
 
-class TestParseV2(unittest.TestCase):
+class TestParseDefault(unittest.TestCase):
     def setUp(self):
-        self.frames = list(parse_rows(rows(V2_HEADER, V2_ROW)))
+        self.frames = list(parse_rows(rows(DEFAULT_HEADER, DEFAULT_ROW)))
 
     def test_one_frame(self):
         self.assertEqual(len(self.frames), 1)
@@ -123,15 +129,15 @@ class TestNullHandling(unittest.TestCase):
         GPU-bound game as CPU-bound -- the single most consequential wrong
         answer this tool can give.
         """
-        row = V2_ROW.split(",")
+        row = DEFAULT_ROW.split(",")
         row[21] = "NA"  # MsGPUBusy
-        f = list(parse_rows(rows(V2_HEADER, ",".join(row))))[0]
+        f = list(parse_rows(rows(DEFAULT_HEADER, ",".join(row))))[0]
         self.assertIsNone(f.gpu_busy_ms)
 
     def test_dropped_frame_detected_in_v2_via_msuntildisplayed(self):
-        row = V2_ROW.split(",")
+        row = DEFAULT_ROW.split(",")
         row[14] = "NA"  # MsUntilDisplayed
-        f = list(parse_rows(rows(V2_HEADER, ",".join(row))))[0]
+        f = list(parse_rows(rows(DEFAULT_HEADER, ",".join(row))))[0]
         self.assertFalse(f.displayed)
 
     def test_dropped_flag_honoured_in_v1(self):
@@ -141,15 +147,88 @@ class TestNullHandling(unittest.TestCase):
         self.assertFalse(f.displayed)
 
     def test_zero_and_missing_frame_times_are_skipped(self):
-        bad = V2_ROW.split(",")
+        bad = DEFAULT_ROW.split(",")
         bad[10] = "0"
-        worse = V2_ROW.split(",")
+        worse = DEFAULT_ROW.split(",")
         worse[10] = "NA"
-        frames = list(parse_rows(rows(V2_HEADER, ",".join(bad), ",".join(worse), V2_ROW)))
+        frames = list(parse_rows(rows(DEFAULT_HEADER, ",".join(bad), ",".join(worse), DEFAULT_ROW)))
         self.assertEqual(len(frames), 1)
 
     def test_empty_input(self):
         self.assertEqual(list(parse_rows([])), [])
+
+
+V2_HEADER = (
+    "Application,ProcessID,SwapChainAddress,PresentRuntime,SyncInterval,PresentFlags,"
+    "AllowsTearing,PresentMode,CPUStartTime,FrameTime,CPUBusy,CPUWait,GPULatency,"
+    "GPUTime,GPUBusy,GPUWait,DisplayLatency,DisplayedTime,AnimationError,AnimationTime,"
+    "MsFlipDelay,AllInputToPhotonLatency,ClickToPhotonLatency"
+)
+
+V2_ROW = (
+    "u4.exe,7980,0x1F2764AB3D0,DXGI,0,0,0,Hardware Composed: Independent Flip,"
+    "2698.8659,24.4096,7.0314,0.6186,22.9920,0.4158,20.1000,0.0000,31.0253,8.6738,"
+    "NA,24.4096,NA,NA,NA"
+)
+
+
+class TestParseV2Explicit(unittest.TestCase):
+    """The --v2_metrics schema: bare column names, no 'Ms' prefix."""
+
+    def setUp(self):
+        self.frames = list(parse_rows(rows(V2_HEADER, V2_ROW)))
+
+    def test_detected_as_v2(self):
+        self.assertEqual(detect_schema(V2_HEADER.split(",")), "v2")
+
+    def test_frame_time_from_frametime_column(self):
+        self.assertAlmostEqual(self.frames[0].frame_time_ms, 24.4096, places=4)
+
+    def test_gpu_busy_from_gpubusy_not_gputime(self):
+        self.assertAlmostEqual(self.frames[0].gpu_busy_ms, 20.1, places=4)
+
+    def test_cpu_busy(self):
+        self.assertAlmostEqual(self.frames[0].cpu_busy_ms, 7.0314, places=4)
+
+    def test_cpustarttime_is_milliseconds(self):
+        """Verified on device: the CPUStartTime span of a capture matched the
+        summed frame times, so it is milliseconds, not seconds."""
+        self.assertAlmostEqual(self.frames[0].time_s, 2.6988659, places=6)
+
+    def test_dropped_inferred_from_displayedtime(self):
+        row = V2_ROW.split(",")
+        row[17] = "NA"  # DisplayedTime
+        f = list(parse_rows(rows(V2_HEADER, ",".join(row))))[0]
+        self.assertFalse(f.displayed)
+
+    def test_all_three_schemas_are_distinguishable(self):
+        """The three must never collide; a wrong pick corrupts units silently."""
+        got = {
+            detect_schema(DEFAULT_HEADER.split(",")),
+            detect_schema(V2_HEADER.split(",")),
+            detect_schema(V1_HEADER.split(",")),
+        }
+        self.assertEqual(got, {"default", "v2", "v1"})
+
+
+class TestBom(unittest.TestCase):
+    """Every PresentMon CSV carries a UTF-8 BOM.
+
+    Read as plain utf-8, it attaches to the first column name, so 'Application'
+    becomes '\\ufeffApplication'. The numeric columns keep working, so the
+    failure is silent: process filtering matches nothing and a capture looks
+    empty for no visible reason.
+    """
+
+    def test_bom_on_header_is_stripped(self):
+        frames = list(parse_rows(rows("﻿" + DEFAULT_HEADER, DEFAULT_ROW)))
+        self.assertEqual(len(frames), 1)
+        self.assertEqual(frames[0].app, "u4.exe")
+
+    def test_bom_does_not_break_detection(self):
+        self.assertEqual(
+            detect_schema(("﻿" + DEFAULT_HEADER).split(",")), "default"
+        )
 
 
 if __name__ == "__main__":

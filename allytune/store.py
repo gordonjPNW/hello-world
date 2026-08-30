@@ -54,6 +54,11 @@ def record(
             "applications": getattr(capture, "applications", {}),
         },
         "metrics": metrics.as_dict(),
+        "telemetry": (
+            capture.telemetry_summary.as_dict()
+            if getattr(capture, "telemetry_summary", None) is not None
+            else {}
+        ),
         "device": {
             "configuration": inv.get("configuration", ""),
             "on_ac": inv.get("on_ac"),
