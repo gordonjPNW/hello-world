@@ -1,0 +1,150 @@
+<!--
+  CHALK — date line + two complication slots
+  Watch Face Format v4 · Pixel Watch 5 (wisteria_lte), 480x480
+
+  Drop these three blocks into CHALK's <Scene> in res/raw/watchface.xml.
+  Coordinates below are a starting point for a centred 480x480 dial: the date
+  sits under the time, the two slots flank it. Move them to suit CHALK's
+  actual layout — everything else here is layout-independent.
+
+  Limit: a watch face may declare at most 8 ComplicationSlot elements total.
+-->
+
+<!-- ============================================================
+     1. DATE LINE
+     Two options. Use ONE.
+     ============================================================ -->
+
+<!-- Option A — explicit, gives you exact control over the wording.
+     [DAY] is an integer 1-31, [MONTH_S] is already a short string
+     ("Jan", "Dec"), so the format string is "%d %s" and the Parameter
+     elements are supplied in that same order.
+     CDATA keeps stray whitespace out of the rendered string, which
+     otherwise shifts the text and breaks CENTER alignment. -->
+<PartText name="date" x="120" y="296" width="240" height="34" alpha="255">
+  <Text align="CENTER">
+    <Font family="chalk_regular" size="26" weight="NORMAL" color="#FFFFFF">
+      <Template><![CDATA[%d %s]]>
+        <Parameter expression="[DAY]" />
+        <Parameter expression="[MONTH_S]" />
+      </Template>
+    </Font>
+  </Text>
+</PartText>
+
+<!-- Option B — locale-aware. icuBestText() takes a skeleton and renders it
+     in the viewer's locale, so "9 Sep" becomes "Sep 9" in en-US and
+     "9 sept." in fr-FR without you branching on locale. Prefer this unless
+     the exact glyph order matters to the design.
+     Skeleton "EEE d MMM" -> "Mon 9 Sep". Drop EEE for just "9 Sep". -->
+<PartText name="date" x="120" y="296" width="240" height="34" alpha="255">
+  <Text align="CENTER">
+    <Font family="chalk_regular" size="26" weight="NORMAL" color="#FFFFFF">
+      <Template><![CDATA[%s]]>
+        <Parameter expression="icuBestText(&quot;EEE d MMM&quot;)" />
+      </Template>
+    </Font>
+  </Text>
+</PartText>
+
+
+<!-- ============================================================
+     2. LEFT COMPLICATION SLOT — defaults to step count
+     ============================================================
+     supportedTypes lists what the slot will accept when the user swaps
+     providers in the editor. Include EMPTY so the slot can be cleared;
+     without it the user cannot turn the complication off.
+     Each type you list needs its own <Complication> child to render it —
+     a type with no renderer draws nothing. -->
+<ComplicationSlot
+    slotId="1"
+    x="104" y="336" width="88" height="88"
+    displayName="slot_left"
+    supportedTypes="SHORT_TEXT RANGED_VALUE MONOCHROMATIC_IMAGE EMPTY"
+    isCustomizable="true">
+
+  <!-- Exactly one bounding area, required. Oval = circular tap target. -->
+  <BoundingOval x="0" y="0" width="88" height="88" />
+
+  <DefaultProviderPolicy
+      defaultSystemProvider="STEP_COUNT"
+      defaultSystemProviderType="SHORT_TEXT" />
+
+  <Complication type="SHORT_TEXT">
+    <PartText x="0" y="26" width="88" height="36">
+      <Text align="CENTER">
+        <Font family="chalk_regular" size="24" color="#FFFFFF">
+          <Template><![CDATA[%s]]>
+            <Parameter expression="[COMPLICATION.TEXT]" />
+          </Template>
+        </Font>
+      </Text>
+    </PartText>
+  </Complication>
+
+  <Complication type="RANGED_VALUE">
+    <PartText x="0" y="26" width="88" height="36">
+      <Text align="CENTER">
+        <Font family="chalk_regular" size="24" color="#FFFFFF">
+          <Template><![CDATA[%d%%]]>
+            <Parameter expression="round(([COMPLICATION.RANGED_VALUE_VALUE] - [COMPLICATION.RANGED_VALUE_MIN]) / ([COMPLICATION.RANGED_VALUE_MAX] - [COMPLICATION.RANGED_VALUE_MIN]) * 100)" />
+          </Template>
+        </Font>
+      </Text>
+    </PartText>
+  </Complication>
+
+  <Complication type="MONOCHROMATIC_IMAGE">
+    <PartImage x="24" y="24" width="40" height="40">
+      <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]" />
+    </PartImage>
+  </Complication>
+</ComplicationSlot>
+
+
+<!-- ============================================================
+     3. RIGHT COMPLICATION SLOT — defaults to watch battery
+     ============================================================ -->
+<ComplicationSlot
+    slotId="2"
+    x="288" y="336" width="88" height="88"
+    displayName="slot_right"
+    supportedTypes="SHORT_TEXT RANGED_VALUE MONOCHROMATIC_IMAGE EMPTY"
+    isCustomizable="true">
+
+  <BoundingOval x="0" y="0" width="88" height="88" />
+
+  <DefaultProviderPolicy
+      defaultSystemProvider="WATCH_BATTERY"
+      defaultSystemProviderType="SHORT_TEXT" />
+
+  <Complication type="SHORT_TEXT">
+    <PartText x="0" y="26" width="88" height="36">
+      <Text align="CENTER">
+        <Font family="chalk_regular" size="24" color="#FFFFFF">
+          <Template><![CDATA[%s]]>
+            <Parameter expression="[COMPLICATION.TEXT]" />
+          </Template>
+        </Font>
+      </Text>
+    </PartText>
+  </Complication>
+
+  <Complication type="RANGED_VALUE">
+    <PartText x="0" y="26" width="88" height="36">
+      <Text align="CENTER">
+        <Font family="chalk_regular" size="24" color="#FFFFFF">
+          <Template><![CDATA[%d%%]]>
+            <Parameter expression="round(([COMPLICATION.RANGED_VALUE_VALUE] - [COMPLICATION.RANGED_VALUE_MIN]) / ([COMPLICATION.RANGED_VALUE_MAX] - [COMPLICATION.RANGED_VALUE_MIN]) * 100)" />
+          </Template>
+        </Font>
+      </Text>
+    </PartText>
+  </Complication>
+
+  <Complication type="MONOCHROMATIC_IMAGE">
+    <PartImage x="24" y="24" width="40" height="40">
+      <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]" />
+    </PartImage>
+  </Complication>
+</ComplicationSlot>
