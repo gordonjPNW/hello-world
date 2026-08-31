@@ -255,8 +255,17 @@ def classify_configuration(inv: Inventory) -> str:
 
 
 def build_warnings(inv: Inventory) -> list:
-    """Conditions that would make a measurement untrustworthy."""
+    """Conditions that would make a measurement untrustworthy.
+
+    Derives the configuration itself when it has not been filled in yet, rather
+    than trusting the caller to have done it first. An ordering dependency here
+    would fail silently -- the mixed-state warning simply would not appear --
+    and a warning that quietly stops firing is worse than no warning at all.
+    """
     w = []
+    configuration = inv.configuration
+    if configuration in ("", "unknown", None):
+        configuration = classify_configuration(inv)
     if not inv.elevated:
         w.append(
             "Not running as Administrator. PresentMon still captures, but it cannot "
@@ -269,9 +278,9 @@ def build_warnings(inv: Inventory) -> list:
             "platform trims power limits, which silently changes what you are "
             "measuring. Charge above 50% before a benchmark set."
         )
-    if inv.configuration in ("handheld-charging", "undocked-external"):
+    if configuration in ("handheld-charging", "undocked-external"):
         w.append(
-            "Configuration reads as '" + inv.configuration + "', which is neither of "
+            "Configuration reads as '" + configuration + "', which is neither of "
             "the two target profiles. Do not pool these results with handheld or "
             "docked sets."
         )

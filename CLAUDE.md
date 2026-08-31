@@ -17,8 +17,12 @@ PowerShell. Terminal access is not a constraint.
 
 ## The device
 
-**ASUS ROG Ally X (2024)**, Windows 11, Ryzen Z1 Extreme, 24 GB RAM.
+**ASUS ROG Ally X (2024)**, Windows 11 Home 10.0.26200, Ryzen Z1 Extreme (8 cores), BIOS RC72LA.312.
 
+- **RAM: 24 GB installed, but Windows sees 15.7 GB** — 8 GB is carved out as dedicated VRAM for
+  the iGPU. Both numbers are true and the difference matters: a game plus Windows is working
+  against 15.7 GB. Verified 2026-08-30.
+- GPU driver 32.0.31007.6002 (2026-05-17).
 - Windows username is `gordo`. Project lives at `C:\Users\gordo\Documents\Claude\hello-world`.
 - `C:\Users\gordo\Documents\Claude\set-refresh-rate.ps1` predates this project. allytune will
   absorb it and add `-List` / `-Display N`, because it currently targets whichever display is
@@ -29,8 +33,20 @@ PowerShell. Terminal access is not a constraint.
 - Internal panel confirmed at 120 Hz. Docked runs an Alienware 32" at 3840×2160, currently limited
   to 59/60 Hz by a suspect dock.
 
-**Always run the terminal as Administrator.** PresentMon needs it for ETW tracing and phase 2 needs
-it for SMU access. A non-elevated session looks fine until it fails at the measurement.
+**Always run the terminal as Administrator** — but for the real reasons, not the one previously
+recorded here. Corrected 2026-08-30 by testing on the device:
+
+- **PresentMon does NOT need elevation to capture.** It traced 357 frames from a normal user
+  shell. The earlier claim that "a non-elevated session looks fine until it fails at the
+  measurement" was wrong. What elevation actually buys is process-name resolution: without it,
+  short-lived or other-account processes show as `<unknown>` and `--process_name` targeting is
+  unreliable. allytune sidesteps this by filtering the CSV after the fact.
+- **LibreHardwareMonitor genuinely cannot start without elevation.** Its manifest requires it, so
+  unelevated there is no telemetry at all — no package power, no clocks, no temperatures.
+- Phase 2 needs it for SMU access.
+
+So: unelevated you can still measure frametimes, and that is most of phase 1. You cannot measure
+power or heat.
 
 ## The work
 
@@ -41,6 +57,34 @@ strict measurement protocol. See [docs/allytune/00-plan.md](docs/allytune/00-pla
 
 Decisions already taken: direct programmatic TDP control, Python, full autonomy within a session,
 Uncharted 4 first.
+
+### The goal is two profiles per game, not one
+
+Stated by Gordon 2026-08-30. Every game should end up with **two** validated configurations:
+
+| | Handheld | Docked |
+|---|---|---|
+| Power | On battery, SPL ceiling 25 W | Plugged in, SPL ceiling 30 W |
+| Display | Internal 7" panel, 1920×1080 @ 120 Hz | Alienware 32", currently 3840×2160 @ 60 Hz |
+
+These are **different measurement regimes**, not one setup with a knob moved. The power ceilings
+differ, the thermals differ, the pixel counts differ. So:
+
+- Every capture records which configuration it ran in.
+- A noise floor established in one says nothing about the other. Each needs its own.
+- Results are never pooled across the two, and the mixed states (`handheld-charging`,
+  `undocked-external`) get their own labels rather than being filed under the nearest target.
+
+A practical consequence: docked runs are plugged in, so the battery's discharge-rate sensor reads
+zero and power telemetry there depends entirely on LibreHardwareMonitor, and therefore on
+Administrator.
+
+### Reading results away from the terminal
+
+`allytune dashboard` serves a phone-readable page over WiFi (`http://<ally-ip>:8777`). A terminal
+is not usable mid-game on a 7" handheld, and Gordon asked for a phone view. It is a web page
+rather than a native app on purpose — nothing to install, works on the phone, the touchscreen and
+the docked monitor alike.
 
 ### The principle behind all of it
 
@@ -62,6 +106,7 @@ Related, and already proven once on this hardware: the documented perf-per-watt 
 |---|---|
 | `ally-x-tdp-reference.md` | Measured TDP profiles, fan curve, display config, results, open items |
 | `docs/allytune/00-plan.md` | allytune architecture, protocol, build phases |
+| `docs/allytune/04-phase1-results.md` | **What the device actually said.** Verified inventory, the three PresentMon schemas, and what the other docs got wrong |
 | `docs/allytune/01-claude-code-on-the-ally.md` | Device setup |
 | `docs/allytune/02-using-claude-code.md` | Beginner command reference |
 | `docs/ally-x/` | The original 11-phase manual runbook |
