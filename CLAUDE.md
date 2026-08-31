@@ -30,8 +30,16 @@ PowerShell. Terminal access is not a constraint.
 - Battery health ~83% (66.5 Wh against 80 Wh nominal). Runtime estimates are against that.
 - Memory Integrity is **off**. Relevant twice: it helps CPU-bound titles, and it is what will let
   the phase 2 low-level power driver load at all.
-- Internal panel confirmed at 120 Hz. Docked runs an Alienware 32" at 3840×2160, currently limited
-  to 59/60 Hz by a suspect dock.
+- Internal panel confirmed at 1920×1080 @ 120 Hz, EDID model `TL070FVXS01-0`.
+- Docked runs an **Alienware AW3225DM, which is 2560×1440 native, not 4K**. Its EDID advertises
+  3840×2160 as the preferred mode and Windows reports that as "recommended" — it is a trap. The
+  monitor accepts 4K and downscales it, costing GPU budget on pixels it cannot show. Driven at
+  native 1440p since 2026-08-31.
+- The dock limits it to 60 Hz at *every* resolution. **It is not a DisplayLink dock** — verified
+  2026-08-31: one display adapter only, no DisplayLink devices or services. So the monitor is on a
+  genuine DP-alt-mode link and the ceiling is bandwidth or EDID, not USB video. A direct USB-C →
+  DisplayPort cable should reach 144/180 Hz and bring VRR into play; that is a cable, not a new
+  dock, and it is the single highest-leverage purchase available.
 
 **Always run the terminal as Administrator** — but for the real reasons, not the one previously
 recorded here. Corrected 2026-08-30 by testing on the device:
@@ -65,7 +73,7 @@ Stated by Gordon 2026-08-30. Every game should end up with **two** validated con
 | | Handheld | Docked |
 |---|---|---|
 | Power | On battery, SPL ceiling 25 W | Plugged in, SPL ceiling 30 W |
-| Display | Internal 7" panel, 1920×1080 @ 120 Hz | Alienware 32", currently 3840×2160 @ 60 Hz |
+| Display | Internal 7" panel, 1920×1080 @ 120 Hz | Alienware AW3225DM, 2560×1440 @ 60 Hz (native) |
 
 These are **different measurement regimes**, not one setup with a knob moved. The power ceilings
 differ, the thermals differ, the pixel counts differ. So:
