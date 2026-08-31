@@ -79,6 +79,36 @@ A practical consequence: docked runs are plugged in, so the battery's discharge-
 zero and power telemetry there depends entirely on LibreHardwareMonitor, and therefore on
 Administrator.
 
+### The display recipe — validated, and it transfers between games
+
+Established on Uncharted 4 on 2026-08-31. It took the framerate **actually reaching the screen**
+from 12.4 fps to a locked 30, with no graphics settings changed and no TDP work at all. Every step
+is a property of the Windows compositor rather than of a game engine, which is why it generalises
+where settings do not.
+
+Symptom to watch for: the game reports a healthy fps while feeling choppy. That is Windows
+discarding presents. `allytune` flags it per run as `SUSPECT`, and the giveaway is
+`Composed: Flip` in place of `Independent Flip`.
+
+1. **`SwapEffectUpgradeEnable=1`** per executable, in
+   `HKCU\Software\Microsoft\DirectX\UserGpuPreferences`. Windows 11's "Optimizations for windowed
+   games". Alone it took dropped presents from 42.7% to 0.0%. Read at process start, so the game
+   must be restarted after setting it. **Already applied to all ten installed executables.**
+2. **Desktop at the panel's native resolution.** The Alienware is 2560×1440; it was being driven
+   at 3840×2160, which it accepts and downscales. Fixing this alone was worth ~19%.
+3. **Game resolution must equal the desktop resolution exactly**, in Borderless Windowed. A
+   mismatch forces composition no matter how correct everything else is.
+4. **Overlays off** — Armoury Crate's in-game bar and Steam's overlay. Either one forces
+   composition. This was the last 92%→100% step *after* everything else was already right.
+5. **V-Sync off.** Borderless cannot tear; the game's own V-Sync only adds queueing.
+6. **Cap at 30 with the in-game limiter**, not Adrenalin (a driver cap hooks the present chain).
+   At 60 Hz with no VRR the only cleanly-paced caps are 30 and 60 — a locked 30 feels smoother
+   than a wandering 42.
+
+**Restart the game after ANY settings change.** Changing a setting recreates the swapchain and
+Windows does not re-apply the optimization to the new one. Measured, not assumed — and it means a
+settings sweep that does not relaunch is silently measuring a degraded display path.
+
 ### Reading results away from the terminal
 
 `allytune dashboard` serves a phone-readable page over WiFi (`http://<ally-ip>:8777`). A terminal
@@ -107,6 +137,7 @@ Related, and already proven once on this hardware: the documented perf-per-watt 
 | `ally-x-tdp-reference.md` | Measured TDP profiles, fan curve, display config, results, open items |
 | `docs/allytune/00-plan.md` | allytune architecture, protocol, build phases |
 | `docs/allytune/04-phase1-results.md` | **What the device actually said.** Verified inventory, the three PresentMon schemas, and what the other docs got wrong |
+| `docs/allytune/06-game-library.md` | The nine installed games: what was applied to all of them, and what still needs measuring per title |
 | `docs/allytune/01-claude-code-on-the-ally.md` | Device setup |
 | `docs/allytune/02-using-claude-code.md` | Beginner command reference |
 | `docs/ally-x/` | The original 11-phase manual runbook |
