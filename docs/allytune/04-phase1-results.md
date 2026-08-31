@@ -4,12 +4,18 @@ First session with the hardware present. Everything below was read off this Ally
 **2026-08-30**, not inferred. Where it contradicts an earlier document, the earlier document was
 written without device access and is wrong; the correction is noted and the source doc updated.
 
-**Status: the rig is built and tested. The acceptance test has been run once and it FAILED —
-noise floor 49.8%, against a 5% bar. Phase 1 is not done.** The rig's central-tendency numbers
-are solid (mean frametime repeated across three runs to 1.8%, average fps to 1.8%), but its
-pacing metrics did not hold, and the headline is the worst pacing metric by design. The variance
-has to be found and killed before anything downstream is trustworthy. The run, the telemetry and
-the diagnosis are in [The acceptance test](#the-acceptance-test) below.
+**Status: the rig is built, tested, and has PASSED its acceptance test — noise floor 1.98%,
+against a 3% bar.** Attempt 1 gave 49.8% and failed; attempt 2, after clearing memory pressure
+and keeping other windows off the game, gave 1.98%, with every metric repeating to within 2% —
+including the frametime standard deviation that had blown out to 49.8% the first time.
+
+**But the docked configuration has a serious display-path fault that must be fixed before any
+tuning.** All three runs of attempt 2 sat in `Composed: Flip`, and the desktop compositor
+discarded **55% of the game's frames**: the screen updated 12.4 times a second while the game
+rendered 27.7. So the noise floor is honest about the *measurement chain* but not yet about the
+configuration we intend to tune. Once the flip path is fixed the frametime distribution changes
+completely and **the floor has to be re-established**. Detail in
+[The acceptance test](#the-acceptance-test).
 
 ---
 
@@ -362,22 +368,87 @@ itself.
    flip mode on the docked 4K panel, and the suspect dock's 59/60 Hz behaviour (see `CLAUDE.md`)
    is a prime suspect. `average fps` of 25 flatters it; the felt cadence was ~13 fps.
 
-### What has to happen before the retest
+### Result — second attempt, 2026-08-30 (docked): PASS at 1.98%
 
-In rough order of expected payoff. Each is Gordon's to do; none is a code change.
+Same command, plus a 20 s grace period so the alt-tab back into the game happened before
+recording started. Two conditions differed from attempt 1, and both turned out to matter:
+**3.7 GB of RAM free instead of 0.24 GB**, and **LibreHardwareMonitor not running**, so no second
+window was drawing over the game.
 
-1. **Free up memory.** Close Steam's overlay/browser, any browser, Armoury Crate's extras. Get
-   "free RAM" above ~2 GB before starting. `allytune doctor` will start reporting this.
-2. **Put Uncharted 4 in a real fullscreen / flip mode on the dock**, or run the whole test on the
-   **internal panel** instead, where independent flip is reliable and the 120 Hz timing is known
-   good. The handheld noise floor is a profile we need anyway.
-3. **Do not touch the machine during the run — including not running other terminal commands.**
-   Launch LHM, start the game, park the camera, start `noisefloor`, walk away.
-4. **Warm the area first.** Play the exact route spot for 3–4 minutes before the first capture so
-   streaming and shaders have settled, then start the three runs.
-5. Consider `--runs 4` and discarding run 1, given how clearly run 1 was the odd one out.
+```
+                        mean      spread   cv       three runs
+  1% low frametime      58.287    1.01%    0.55%    [58.652, 58.145, 58.066]
+  frametime stdev        8.829    1.01%    0.54%    [ 8.883,  8.794,  8.810]
+  mean frametime        37.259    1.98%    1.08%    [36.800, 37.440, 37.538]
+  0.1% low frametime    60.377    1.12%    0.58%    [60.771, 60.092, 60.269]
+  average fps           26.841    1.99%    1.08%    [27.174, 26.709, 26.640]
 
-Re-run and paste the whole output here. An honest second number — better or worse — is the goal.
+  Headline: 1.98%  (worst pacing metric: mean frametime)
+  Verdict:  USABLE -- under 3%. The rig resolves a 5% effect.
+```
+
+The metric that failed attempt 1 is the strongest one here: **frametime standard deviation went
+from a 49.8% spread to 1.01%.** No analysis code changed between the two attempts. What changed
+was the state of the machine — which is exactly what a noise floor exists to detect, and it did.
+
+**The phase 1 acceptance criterion is met: the rig resolves a 5% effect.**
+
+### The fault the passing run exposed
+
+A clean noise floor is not the same as a healthy machine, and this run demonstrates the
+difference. All three runs were flagged `SUSPECT` by the new per-run check:
+
+```
+present: Composed: Flip 100%, 55.3% / 55.0% / 55.0% of presents never displayed
+```
+
+Verified against the raw CSV rather than inferred — `MsUntilDisplayed` and
+`MsBetweenDisplayChange` are `NA` on exactly the same 55.3% of rows, so these are real dropped
+presents and not a parsing artifact:
+
+```
+MsBetweenPresents        n=2483  mean 36.16 ms  median 31.23   -> game renders 27.7 fps
+MsBetweenDisplayChange   n=1111  mean 80.78 ms  median 78.46   -> screen updates 12.4 fps
+```
+
+**Over half the work the chip does never reaches the eye.** `average fps` of 26.8 flatters it
+badly; the felt cadence is about 12 fps. At 13 W package power and ~850 MHz on the GPU, this is
+not a performance limit — it is a plumbing fault.
+
+It is also intermittent-then-sticky, which is why attempt 1 looked so much worse. A probe taken
+25 minutes earlier, with the game running but paused, showed the opposite:
+
+```
+Hardware Composed: Independent Flip  100%,  0.0% dropped,  36.9 fps,  stdev 2.43 ms
+```
+
+So the game *can* reach independent flip on this dock at 4K. It fell out of that path when
+gameplay resumed, and had not recovered ten minutes later. Attempt 1 caught it mid-transition —
+run 1 was 82% composed, 18% independent — which is why its variance was enormous. Attempt 2
+caught it uniformly broken, which is stable and therefore repeats cleanly.
+
+**A stable measurement of a broken configuration is still a broken configuration.**
+
+### What to fix next, in order of expected payoff
+
+1. **Set the game to 1080p.** The desktop runs at 3840×2160 and games default to desktop
+   resolution. `ally-x-tdp-reference.md` has carried "Set games to 1080p when docked" as an open
+   item since July and it was never actioned. 4K is 4× the pixels of 1080p on a handheld APU, and
+   1080p integer-scales into 4K with no interpolation softness.
+2. **Run the external monitor alone** — Windows+P, "Second screen only". Two active displays make
+   the desktop compositor arbitrate, which is a common way to lose independent flip.
+3. **Turn off overlays** — Radeon, Steam, Xbox Game Bar. Each is a window that can force
+   composition.
+4. **Re-establish the noise floor afterwards.** The current 1.98% describes a 12 fps display path.
+   Fixing it changes the frametime distribution completely, so the floor does not carry over.
+
+### Note for phase 2: the telemetry tool corrupts the measurement
+
+LibreHardwareMonitor's window on screen is by itself enough to knock a game out of independent
+flip. The tool that exists to measure power was degrading the frametimes it was annotating.
+Minimise it to the tray (its config is pre-seeded with `minTrayMenuItem`), or accept that docked
+power telemetry and clean frametimes may not be simultaneously available. Attempt 2 has no power
+data for exactly this reason — and on AC the battery sensor reads zero, so there was no fallback.
 
 ### What to expect
 

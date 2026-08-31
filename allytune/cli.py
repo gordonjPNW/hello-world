@@ -138,6 +138,30 @@ def _print_telemetry(cap, prefix="  "):
         print(prefix + "note: " + n)
 
 
+def _present_summary(cap):
+    """Present mode and drop rate for a capture.
+
+    Surfaced per run because losing 'Hardware Composed: Independent Flip' is the
+    single failure that wrecked the first acceptance test: in the composited
+    path the desktop compositor discarded ~half the game's frames, which showed
+    up as pacing variance rather than as the plumbing problem it was. A run that
+    fell out of independent flip is not comparable to one that did not, and that
+    has to be visible at the moment of capture rather than found later.
+    """
+    frames = cap.frames
+    if not frames:
+        return "no frames", 0.0, False
+    dropped = sum(1 for f in frames if not f.displayed)
+    drop_pct = 100.0 * dropped / len(frames)
+    counts = {}
+    for f in frames:
+        counts[f.present_mode] = counts.get(f.present_mode, 0) + 1
+    mode, n = max(counts.items(), key=lambda kv: kv[1])
+    share = 100.0 * n / len(frames)
+    clean = mode.startswith("Hardware") and share > 99.0 and drop_pct < 1.0
+    return mode + " " + format(share, ".0f") + "%", drop_pct, clean
+
+
 def _capture_once(args, inv, label):
     # Telemetry runs alongside the capture rather than around it, so power and
     # temperature are attributable to the same window as the frametimes.
@@ -229,8 +253,20 @@ def cmd_noisefloor(args) -> int:
     print("The whole point is that the ONLY difference is the rig itself.")
     print()
 
+    delay = getattr(args, "start_delay", 0.0)
+    if delay > 0:
+        print("Starting in " + str(int(delay)) + " s -- switch into the game and unpause NOW.")
+        print("Alt-tabbing drops a game out of independent flip; this is the grace")
+        print("period for it to get back in before anything is recorded.")
+        for remaining in range(int(delay), 0, -5):
+            print("  " + str(remaining) + " s ...", flush=True)
+            time.sleep(min(5, remaining))
+        print("  capturing now.", flush=True)
+        print("", flush=True)
+
     runs = []
     captures = []
+    suspect = []
     for i in range(1, args.runs + 1):
         if not args.no_prompt:
             input("Run " + str(i) + "/" + str(args.runs)
@@ -239,10 +275,18 @@ def cmd_noisefloor(args) -> int:
         cap, m = _capture_once(args, inv, "noisefloor-" + str(i))
         captures.append(cap)
         runs.append(m)
+        mode_desc, drop_pct, clean = _present_summary(cap)
         print("  run " + str(i) + ": 1% low " + format(m.low_1pct_ms, ".2f")
               + " ms, stdev " + format(m.frame_time_stdev_ms, ".2f")
               + " ms, avg " + format(m.avg_fps, ".1f") + " fps, "
               + m.classification)
+        print("          present: " + mode_desc + ", "
+              + format(drop_pct, ".1f") + "% of presents never displayed")
+        if not clean:
+            suspect.append(i)
+            print("          ** SUSPECT: not cleanly in independent flip. The compositor")
+            print("             is discarding frames, so this run measures the display")
+            print("             path, not the game.")
         store.record(m, cap, inv, game=args.game,
                      notes="noise floor run " + str(i) + "/" + str(args.runs),
                      base_dir=args.results_dir)
@@ -259,6 +303,7 @@ def cmd_noisefloor(args) -> int:
         "headline_pct": nf.headline_pct,
         "headline_metric": nf.headline_metric,
         "verdict": nf.verdict,
+        "suspect_runs": suspect,
         "spreads": [
             {"metric": s.metric, "label": s.label, "values": s.values,
              "mean": s.mean, "range_pct": s.range_pct, "cv_pct": s.cv_pct}
@@ -276,6 +321,12 @@ def cmd_noisefloor(args) -> int:
         print()
         print("  Configuration: " + inv.configuration
               + "  -- this floor applies to this configuration only.")
+        if suspect:
+            print()
+            print("  ** " + str(len(suspect)) + " of " + str(args.runs)
+                  + " runs (" + ", ".join(str(x) for x in suspect) + ") were not cleanly")
+            print("     in independent flip. Treat this floor as measuring the display")
+            print("     path rather than the rig. Fix that before trusting the number.")
 
     _out(payload, args.json, human)
     return 0
@@ -384,6 +435,11 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--output-dir", default="captures", help="where CSVs are written")
         sp.add_argument("--telemetry-interval", type=float, default=2.0,
                         help="seconds between telemetry samples (default 2)")
+        sp.add_argument("--start-delay", type=float, default=0.0,
+                        help="seconds to wait before the FIRST capture, so you can "
+                             "switch into the game and unpause. Alt-tabbing knocks a "
+                             "game out of independent flip, and it needs a moment to "
+                             "get back into it")
         sp.add_argument("--metrics-version", default="default",
                         choices=["default", "v1", "v2"],
                         help="PresentMon metric set to request")
