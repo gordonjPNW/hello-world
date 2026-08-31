@@ -1,5 +1,36 @@
 # Handoff prompt — continue allytune locally
 
+> ## STOP — read this before carrying out anything below
+>
+> **Phase 1 has been built. Do not build it again.** As of 2026-08-30 the measurement rig exists
+> on this branch: `allytune/` with 63 passing unit tests, PresentMon 2.5.1 and
+> LibreHardwareMonitor 0.9.6 pinned in `tools/`, inventory reconciled against the hardware, and a
+> phone dashboard. The instructions further down describe work that is finished.
+>
+> **What is actually outstanding is the acceptance test**, and only that. It needs a person to
+> play a fixed route in Uncharted 4 three times, which is why it is not done.
+>
+> Read these two instead, and act on them:
+>
+> 1. [`04-phase1-results.md`](04-phase1-results.md) — what the device actually said, including a
+>    table of what the other documents got wrong. Several of the assumptions in *this* file are on
+>    that table.
+> 2. [`05-running-the-acceptance-test.md`](05-running-the-acceptance-test.md) — the step-by-step.
+>
+> Corrections that matter most, because this document states two of them wrongly:
+>
+> - **PresentMon does not require Administrator to capture.** It captured 357 frames unelevated.
+>   LibreHardwareMonitor is the one that genuinely cannot start without it.
+> - **PresentMon 2.5.1 emits three CSV schemas, not two.** The `FrameTime`/`GPUBusy` names below
+>   belong to the `--v2_metrics` invocation; the default output uses `MsBetweenPresents`/
+>   `MsGPUBusy` and matches neither guess in this file. Every CSV also carries a UTF-8 BOM.
+> - **Uncharted 4 has no plaintext settings file**, so the unattended settings sweep this document
+>   assumes is not available for this title without reversing a binary save format.
+>
+> The rest of this file is kept for the rationale and the ground rules, which still stand.
+
+---
+
 This is the brief for a Claude Code session running **on the Ally X itself**, where the hardware is
 available. The planning and setup were done in a remote session with no device access; everything
 below needs the real machine.
