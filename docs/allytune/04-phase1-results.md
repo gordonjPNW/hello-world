@@ -4,8 +4,13 @@ First session with the hardware present. Everything below was read off this Ally
 **2026-08-30**, not inferred. Where it contradicts an earlier document, the earlier document was
 written without device access and is wrong; the correction is noted and the source doc updated.
 
-**Status: the rig is built, tested, and has PASSED its acceptance test — noise floor 1.98%,
-against a 3% bar.** Attempt 1 gave 49.8% and failed; attempt 2, after clearing memory pressure
+**Status: the rig is built and working. Best measured noise floor is 10.29% on the 1% low
+frametime (docked, 1080p), which is above the 3% target.** Accepted as a working baseline by
+Gordon on 2026-08-30 rather than chased further, on the grounds that it is a large improvement and
+sufficient for the big-knob comparisons that come first. What that permits and forbids is spelled
+out in [What a 10.29% floor buys](#what-a-1029-floor-buys).
+
+Earlier status, kept for the trail: attempt 2 recorded a 1.98% floor, Attempt 1 gave 49.8% and failed; attempt 2, after clearing memory pressure
 and keeping other windows off the game, gave 1.98%, with every metric repeating to within 2% —
 including the frametime standard deviation that had blown out to 49.8% the first time.
 
@@ -441,6 +446,71 @@ caught it uniformly broken, which is stable and therefore repeats cleanly.
    composition.
 4. **Re-establish the noise floor afterwards.** The current 1.98% describes a 12 fps display path.
    Fixing it changes the frametime distribution completely, so the floor does not carry over.
+
+### Result — third attempt, 2026-08-30 (docked, 1080p): display fixed, floor 10.29%
+
+Same protocol again, one variable changed: the game set to 1920×1080 instead of the desktop's
+3840×2160. The display fault is gone completely.
+
+| | 4K (attempt 2) | 1080p (attempt 3) |
+|---|---|---|
+| Independent flip | 0% | **100%, all three runs** |
+| Presents discarded | 55% | **0.0%** |
+| Average fps | 26.8 | **35.1** |
+| Mean frametime | 37.26 ms | **28.47 ms** |
+| Classification | present-blocked | **GPU-bound** |
+
+```
+                        mean      spread   cv       three runs
+  1% low frametime      31.356   10.29%    5.87%    [30.257, 33.482, 30.329]
+  frametime stdev        0.702   57.50%   32.51%    [ 0.562,  0.966,  0.579]  (below noise)
+  mean frametime        28.466    0.60%    0.33%    [28.406, 28.575, 28.415]  (below noise)
+  0.1% low frametime    33.729   24.50%   13.85%    [30.855, 39.118, 31.213]
+  average fps           35.130    0.59%    0.33%    [35.204, 34.995, 35.192]
+
+  Headline: 10.29%  (1% low frametime)      Verdict: NOT USABLE against the 3% bar
+```
+
+**Uncharted 4 is GPU-bound at 1080p docked**, GPU-busy ratio 0.95. That answers the plan's open
+classification question for this configuration, and it inverts the Miles Morales lesson: shadows,
+FSR and resolution are the knobs that will matter here, not watts at the low end.
+
+**The failure is one transient in one run.** Runs 1 and 3 are near-perfect and agree with each
+other to 0.24% on the 1% low:
+
+```
+run 1   max frametime 31.0 ms    0 frames >35 ms   152 frames >30ms: no
+run 2   max frametime 47.1 ms    2 frames >35 ms   152 frames >30 ms   <- one burst, frames 712-812
+run 3   max frametime 31.7 ms    0 frames >35 ms
+```
+
+Run 2's damage is confined to about two seconds roughly 20 s in: one 47 ms frame and a cluster of
+33–36 ms ones. That is a background process waking up, not the rig and not the game. It is
+recorded here rather than excluded — dropping the inconvenient run is precisely how a measurement
+rig starts lying to its owner — but it does mean the rig demonstrably reaches well under 1% when
+nothing interrupts it.
+
+### What a 10.29% floor buys
+
+The floor is not a pass/fail for the project, it is a resolution limit, and it is worth being
+precise about what it permits:
+
+| Change | Typical size | Resolvable at 10.29%? |
+|---|---|---|
+| Wattage steps (10 → 17 → 25 W) | 35–148% on this chip | **Yes, comfortably** |
+| Resolution (4K → 1080p) | ~30% here, measured | **Yes** |
+| FSR quality levels | 15–30% | **Yes** |
+| Upscaler on/off | 15–25% | **Yes** |
+| Shadow / texture quality steps | 5–15% | **Marginal — often not** |
+| Fine individual settings | 2–8% | **No** |
+
+So the big knobs — the ones that decide whether a game is playable at all — are testable now. Fine
+settings tuning is not, and any such result must be reported as indistinguishable from noise until
+the floor comes down. Every report prints the floor alongside the result precisely so this cannot
+be forgotten.
+
+To get the floor down later: eliminate the background transient (close Steam's client window,
+disconnect WiFi during runs), or raise the run count so a single interruption carries less weight.
 
 ### Note for phase 2: the telemetry tool corrupts the measurement
 
