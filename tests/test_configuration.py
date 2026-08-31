@@ -12,6 +12,7 @@ from allytune.inventory.device import (
     Inventory,
     build_warnings,
     classify_configuration,
+    _monitor_key,
 )
 
 INTERNAL = Display(
@@ -90,6 +91,40 @@ class TestWarnings(unittest.TestCase):
     def test_memory_pressure_warns(self):
         self.assertIn("streaming hitches", self._text(inv(ram_free_gb=2.1)))
 
+
+
+class TestMonitorKey(unittest.TestCase):
+    """Matching a display mode to the right panel.
+
+    Two Windows APIs describe the same monitor differently. Both strings below
+    are verbatim from this Ally X on 2026-08-30. Getting this wrong attached the
+    Alienware's 1440p mode to the handheld's internal panel -- a confident wrong
+    answer, and the configuration label depends on it.
+    """
+
+    WMI_ALIENWARE = r"DISPLAY\DELD1B1\5&1f28af72&0&UID261_0"
+    DEV_ALIENWARE = r"MONITOR\DELD1B1\{4d36e96e-e325-11ce-bfc1-08002be10318}\0002"
+    WMI_INTERNAL = r"DISPLAY\TMX0002\5&1f28af72&0&UID256_0"
+
+    def test_both_apis_yield_the_same_key(self):
+        self.assertEqual(_monitor_key(self.WMI_ALIENWARE),
+                         _monitor_key(self.DEV_ALIENWARE))
+
+    def test_key_is_the_edid_hardware_id(self):
+        self.assertEqual(_monitor_key(self.WMI_ALIENWARE), "DELD1B1")
+        self.assertEqual(_monitor_key(self.WMI_INTERNAL), "TMX0002")
+
+    def test_different_panels_do_not_collide(self):
+        self.assertNotEqual(_monitor_key(self.WMI_ALIENWARE),
+                            _monitor_key(self.WMI_INTERNAL))
+
+    def test_empty_input_is_safe(self):
+        self.assertEqual(_monitor_key(""), "")
+        self.assertEqual(_monitor_key(None or ""), "")
+
+    def test_unrecognised_shape_does_not_raise(self):
+        """Never throw on an unexpected id -- degrade to no match instead."""
+        self.assertIsInstance(_monitor_key("something-unexpected"), str)
 
 if __name__ == "__main__":
     unittest.main()

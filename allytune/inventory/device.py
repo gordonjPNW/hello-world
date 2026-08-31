@@ -51,6 +51,93 @@ ELEVATION_QUERY = (
     ".IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) }"
 )
 
+# Current display mode, read from the live Windows API rather than WMI.
+#
+# Win32_VideoController.CurrentHorizontalResolution is NOT reliable: after the
+# desktop was changed from 3840x2160 to 2560x1440 on this device it kept
+# reporting the old 4K mode, while EnumDisplaySettings(ENUM_CURRENT_SETTINGS)
+# immediately reported the new one. Since allytune labels every capture with the
+# configuration it ran in, a stale resolution would silently misfile results --
+# the exact class of quiet mislabelling the two-configuration design exists to
+# prevent.
+#
+# Each mode is tagged with the monitor's hardware ID from EnumDisplayDevices, so
+# it can be matched to the right panel. Zipping the two lists positionally does
+# NOT work -- WMI enumerated the internal panel first while EnumDisplaySettings
+# had the Alienware as DISPLAY1, which silently attached the monitor's mode to
+# the handheld's panel. A confidently mislabelled display is worse than none.
+DISPLAY_MODE_QUERY = r"""
+Add-Type @'
+using System;using System.Runtime.InteropServices;
+[StructLayout(LayoutKind.Sequential, CharSet=CharSet.Ansi)]
+public struct ATDM {
+ [MarshalAs(UnmanagedType.ByValTStr, SizeConst=32)] public string dmDeviceName;
+ public short a,b; public short dmSize, dmDriverExtra; public int dmFields;
+ public int x,y; public int o1,o2; public short c,d,e,f; public int g;
+ [MarshalAs(UnmanagedType.ByValTStr, SizeConst=32)] public string dmFormName;
+ public short h,i; public int dmPelsWidth, dmPelsHeight, dmDisplayFlags, dmDisplayFrequency;
+}
+[StructLayout(LayoutKind.Sequential, CharSet=CharSet.Ansi)]
+public struct ATDD {
+ public int cb;
+ [MarshalAs(UnmanagedType.ByValTStr, SizeConst=32)]  public string DeviceName;
+ [MarshalAs(UnmanagedType.ByValTStr, SizeConst=128)] public string DeviceString;
+ public int StateFlags;
+ [MarshalAs(UnmanagedType.ByValTStr, SizeConst=128)] public string DeviceID;
+ [MarshalAs(UnmanagedType.ByValTStr, SizeConst=128)] public string DeviceKey;
+}
+public class ATDisp {
+ [DllImport("user32.dll", CharSet=CharSet.Ansi)]
+ public static extern bool EnumDisplaySettingsA(string dev, int mode, ref ATDM dm);
+ [DllImport("user32.dll", CharSet=CharSet.Ansi)]
+ public static extern bool EnumDisplayDevicesA(string dev, int num, ref ATDD dd, int flags);
+}
+'@ -ErrorAction SilentlyContinue
+$out = @()
+foreach ($n in 1..6) {
+  $dev = '\\.\DISPLAY' + $n
+  $dm = New-Object ATDM; $dm.dmSize = 220
+  if (-not [ATDisp]::EnumDisplaySettingsA($dev, -1, [ref]$dm)) { continue }
+  if ($dm.dmPelsWidth -le 0) { continue }
+  $mon = ''
+  $dd = New-Object ATDD; $dd.cb = [Runtime.InteropServices.Marshal]::SizeOf($dd)
+  if ([ATDisp]::EnumDisplayDevicesA($dev, 0, [ref]$dd, 0)) { $mon = $dd.DeviceID }
+  $out += [pscustomobject]@{ Device = $dev; W = $dm.dmPelsWidth;
+                             H = $dm.dmPelsHeight; Hz = $dm.dmDisplayFrequency;
+                             MonitorId = $mon }
+}
+$out
+"""
+
+
+def _monitor_key(text: str) -> str:
+    """Reduce a monitor identifier to the part both APIs agree on.
+
+    The two APIs disagree on nearly everything except the EDID hardware id.
+    Read off this device:
+
+        WmiMonitorID.InstanceName    DISPLAY\\DELD1B1\\5&1f28af72&0&UID261_0
+        EnumDisplayDevices.DeviceID  MONITOR\\DELD1B1\\{4d36e96e-...}\\0002
+
+    Different root ('DISPLAY' vs 'MONITOR'), different tail (instance path vs
+    class GUID), but the second field -- DELD1B1, TMX0002 -- is the same in
+    both. That token is the key.
+
+    Its one limitation: two identical monitors of the same model would collide.
+    Not the case here (one internal panel, one Alienware), and the caller falls
+    back to reporting no mode rather than guessing, so a collision degrades to
+    missing data rather than wrong data.
+    """
+    if not text:
+        return ""
+    parts = [p for p in text.replace("\\", "#").upper().split("#") if p and p != "?"]
+    for root in ("MONITOR", "DISPLAY"):
+        if root in parts:
+            i = parts.index(root)
+            if i + 1 < len(parts):
+                return parts[i + 1]
+    return parts[1] if len(parts) > 1 else ""
+
 
 @dataclass
 class Display:
@@ -212,21 +299,29 @@ def _collect_displays(gpu: dict) -> list:
     while docked.
     """
     monitors = wb.as_list(wb.ps_json(MONITOR_QUERY))
-    single = len(monitors) == 1
+    modes = wb.as_list(wb.ps_json(DISPLAY_MODE_QUERY))
+
+    # Match on hardware ID, never on position. An unmatched panel reports a zero
+    # mode rather than borrowing another display's -- silence beats a confident
+    # wrong answer, because the configuration label depends on this.
+    by_key = {}
+    for mode in modes:
+        key = _monitor_key(mode.get("MonitorId", ""))
+        if key:
+            by_key.setdefault(key, mode)
+
     out = []
     for i, m in enumerate(monitors):
         name = (m.get("Name") or "").strip()
+        mode = by_key.get(_monitor_key(m.get("Inst", "")), {})
         out.append(Display(
-            device=(m.get("Inst") or "").strip(),
+            device=(mode.get("Device") or m.get("Inst") or "").strip(),
             name=name,
             manufacturer=(m.get("Mfr") or "").strip(),
-            # Mode reporting is per-adapter, so it is only unambiguous with one
-            # display attached. With two we record panel identity and leave the
-            # per-display mode to the display module in phase 2.
-            width=(gpu.get("CurrentHorizontalResolution") or 0) if single else 0,
-            height=(gpu.get("CurrentVerticalResolution") or 0) if single else 0,
-            refresh_hz=(gpu.get("CurrentRefreshRate") or 0) if single else 0,
-            primary=(i == 0),
+            width=mode.get("W", 0) or 0,
+            height=mode.get("H", 0) or 0,
+            refresh_hz=mode.get("Hz", 0) or 0,
+            primary=(mode.get("Device") == "\\\\.\\DISPLAY1"),
             internal=(name == INTERNAL_PANEL_MODEL),
         ))
     return out
