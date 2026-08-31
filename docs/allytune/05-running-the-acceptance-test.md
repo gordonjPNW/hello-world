@@ -170,6 +170,28 @@ Throw this run away. It exists only to warm things up.
 
 ## Step 5 — the real thing
 
+### Preferred: hands-off, with a stationary camera
+
+If your route is a parked camera — and it should be — this is the best version. Park the camera,
+start the command, and **do not touch anything for about 7½ minutes**:
+
+```bash
+python -m allytune noisefloor --runs 3 --seconds 90 --cooldown 90 --no-prompt --game "Uncharted 4"
+```
+
+Three 90-second captures with 90-second cooldowns between them, back to back, with no input from
+you at all.
+
+This is not just more convenient, it is **more accurate**. The alternative below has you switching
+away from the game and back three times, and alt-tabbing out of a full-screen game can change the
+display mode, drop the GPU clock, or trigger a shader recompile — all of which land in the noise
+floor as variance the rig invented. A camera that never moves through captures *and* cooldowns is
+the most repeatable route available.
+
+### Alternative: prompted, for a walked route
+
+If you are walking a path and need to reset to the start between runs:
+
 ```bash
 python -m allytune noisefloor --runs 3 --seconds 90 --game "Uncharted 4"
 ```
@@ -185,6 +207,9 @@ Here is what happens, and it repeats three times:
    show up as noise.
 
 Then it prints the verdict.
+
+If you can play the game in **borderless windowed** mode, do — switching between it and the
+terminal is far less disruptive than leaving true full-screen.
 
 ---
 
