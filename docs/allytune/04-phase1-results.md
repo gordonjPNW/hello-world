@@ -4,11 +4,12 @@ First session with the hardware present. Everything below was read off this Ally
 **2026-08-30**, not inferred. Where it contradicts an earlier document, the earlier document was
 written without device access and is wrong; the correction is noted and the source doc updated.
 
-**Status: the rig is built and tested. The acceptance test has not been run.** It requires
-someone to play a fixed route in Uncharted 4 three times, which is the one part of this project
-that cannot be automated. See [The acceptance test](#the-acceptance-test-not-yet-run) for exactly
-what to do and what number to look for. Nothing downstream should be treated as trustworthy until
-that number exists.
+**Status: the rig is built and tested. The acceptance test has been run once and it FAILED —
+noise floor 49.8%, against a 5% bar. Phase 1 is not done.** The rig's central-tendency numbers
+are solid (mean frametime repeated across three runs to 1.8%, average fps to 1.8%), but its
+pacing metrics did not hold, and the headline is the worst pacing metric by design. The variance
+has to be found and killed before anything downstream is trustworthy. The run, the telemetry and
+the diagnosis are in [The acceptance test](#the-acceptance-test) below.
 
 ---
 
@@ -111,10 +112,29 @@ user session it does not start — it raises a UAC prompt and nothing else. Veri
 attempt from this session was refused. Its config has been pre-seeded to enable the JSON web
 server on port 8085, so it needs no GUI fiddling on a 7" touchscreen once launched.
 
-Sensor names have **not** been verified against this device yet, because LHM could not be started
-from an unelevated session. The mapping in `allytune/telemetry/sensors.py` is a best guess by
-substring match and is explicitly marked as unverified. **This is the one place in phase 1 where
-a documented value is still an assumption.**
+**Sensor names — now verified (2026-08-30, second session).** LHM was launched from an elevated
+session, its JSON server came up on `:8085`, and all six sensors in `WANTED`
+(`allytune/telemetry/sensors.py`) resolve against the live tree:
+
+| allytune field | LHM sensor it matched | value seen |
+|---|---|---|
+| `package_power_w` | `AMD Ryzen Z1 Extreme / Powers / Package` | 11–14 W |
+| `cpu_temp_c` | `AMD Ryzen Z1 Extreme / Temperatures / Core (Tctl/Tdie)` | ~62 °C |
+| `cpu_clock_mhz` | `AMD Ryzen Z1 Extreme / Clocks / Core #1` (nominal, not effective) | 0.6–1.2 GHz |
+| `gpu_clock_mhz` | `AMD Radeon Graphics / Clocks / GPU Core` | ~800–890 MHz |
+| `gpu_power_w` | `AMD Radeon Graphics / Powers / GPU Core` | ~7 W |
+| `gpu_temp_c` | `AMD Radeon Graphics / Temperatures / GPU VR SoC` | ~61 °C |
+
+Two caveats, both minor and now documented rather than assumed:
+
+- The Z1 Extreme exposes **no GPU-die edge temperature** over LHM — `GPU VR SoC` is the voltage
+  regulator, and `Core (Tctl/Tdie)` is the shared APU sensor. For a GPU thermal number, Tctl/Tdie
+  is the honest one; `gpu_temp_c` is a VRM proxy.
+- `cpu_clock_mhz` matches the **nominal** `Core #1`, not `Core #1 (Effective)`. At low load the two
+  diverge a lot (593 vs ~900 MHz idle). If effective clock turns out to matter for a bottleneck
+  call, the needle should be `"core #1 (effective)"`.
+
+This closes the last open assumption in the phase 1 telemetry path.
 
 ### The battery as a power sensor
 
@@ -267,10 +287,9 @@ each time it starts.
 
 ---
 
-## The acceptance test — not yet run
+## The acceptance test
 
-Everything above is scaffolding. **This is the only result that matters in phase 1**, and it needs
-a person to play the game.
+Everything above is scaffolding. **This is the only result that matters in phase 1.**
 
 ### Why it cannot be skipped
 
@@ -279,15 +298,86 @@ identical runs disagree by 5%, then every one of those changes is indistinguisha
 breathing, and a session will still produce confident-sounding conclusions that are uncorrelated
 with reality. That is what "way less good results" felt like on Uncharted 4 the first time.
 
-### Blockers as of this session
+### Result — first attempt, 2026-08-30 (docked)
 
-1. **Not running as Administrator.** Not fatal for PresentMon, but it blocks LibreHardwareMonitor
-   entirely, so power, clocks and temperature would be missing from all three runs.
-2. **Battery at 24–30% and falling.** As the pack drains the platform trims power limits. Three
-   runs spanning a 30%→15% drop are not three identical runs, and the drift would land straight
-   in the noise floor.
+Run verbatim, hands-off, camera left where Gordon parked it:
 
-Both are Gordon's to clear; neither is a code problem.
+```
+python -m allytune noisefloor --runs 3 --seconds 90 --cooldown 90 --no-prompt --game "Uncharted 4"
+```
+
+Conditions: elevated, LibreHardwareMonitor up, plugged in, battery 100%, configuration `docked`
+(external 4K panel). Two warnings fired before the run and both matter to the result:
+
+- `Armoury Crate SE is running` — expected, no plug/unplug happened during the run.
+- **`Only 0.24 GB of RAM free`** — 98.7% of the 15.7 GB visible to Windows was in use. Uncharted 4
+  docked at 4K plus Windows plus Steam plus LHM plus the terminal does not fit, and the platform
+  was paging. Stochastic streaming hitches from memory pressure land directly in frametime stdev
+  and the 0.1% low, which is exactly where this result fell over.
+
+```
+                        mean      spread   cv       three runs
+  1% low frametime      60.975    4.43%    2.53%    [61.84, 61.89, 59.19]
+  frametime stdev        9.987   49.76%   28.60%    [11.61, 11.66,  6.69]
+  mean frametime        39.241    1.80%    0.91%    [39.29, 39.57, 38.86]
+  0.1% low frametime    64.621    8.57%    4.51%    [63.57, 67.92, 62.38]
+  average fps           25.485    1.81%    0.91%    [25.45, 25.27, 25.73]
+
+  Headline: 49.76%  (worst pacing metric: frametime stdev)
+  Verdict:  NOT USABLE — at or above 5%, the size of the effects being hunted.
+
+  Per-run classification:  run 1  CPU-bound or present-blocked
+                           run 2  CPU-bound or present-blocked
+                           run 3  mixed
+  Telemetry (stable):  package power 13.2–13.6 W,  CPU 61.9–62.4 °C,
+                       GPU clock 817–886 MHz,  battery 100% throughout.
+```
+
+**What the numbers say.** The rig's arithmetic is not in question — 63 unit tests pass, and the
+central-tendency metrics repeat beautifully: mean frametime 1.8%, average fps 1.8%, and runs 1
+and 2 agree on the 1% low to within 0.08%. What does not repeat is *pacing*: frametime stdev
+went 11.6 → 11.7 → 6.7 ms, and since the noise-floor headline is deliberately the worst pacing
+metric, the verdict is NOT USABLE. This is the rig working as designed — it refused to certify
+itself.
+
+**Three things were varying between runs, and none of them is the analysis code:**
+
+1. **Present mode changed between run 1 and the rest.** Run 1's CSV is 82% `Composed: Flip` and
+   18% `Hardware Composed: Independent Flip`; runs 2 and 3 are 100% `Composed: Flip`. The game
+   dropped out of the efficient independent-flip path partway through run 1 — plausibly nudged by
+   this session launching LHM and running terminal commands alongside it — and never went back.
+   A capture that changes composition path mid-run is not one clean sample.
+
+2. **The system was still settling.** Run 3 differs from 1 and 2 on every variance measure: half
+   the stdev, far fewer >60 ms hitches (4 vs 24 and 20), GPU-busy ratio up from ~0.68 to 0.86,
+   classification flipped to `mixed`. Something — streaming caches, memory pressure easing, the
+   compositor — kept changing through the first six minutes. Three "identical" runs were not run
+   from the same starting state.
+
+3. **Over half of every frame the game presented never reached the screen.** ~2,500 u4.exe
+   presents per 90 s, of which ~1,100–1,350 are flagged not-displayed. `MsBetweenDisplayChange`
+   sits at 64–80 ms, so the panel was updating ~13 times a second while the game rendered ~28.
+   With package power at 13 W and the GPU at 800 MHz — a chip doing almost nothing — this is not
+   a performance limit, it is a **present/display pipeline problem**: the game is not in a real
+   flip mode on the docked 4K panel, and the suspect dock's 59/60 Hz behaviour (see `CLAUDE.md`)
+   is a prime suspect. `average fps` of 25 flatters it; the felt cadence was ~13 fps.
+
+### What has to happen before the retest
+
+In rough order of expected payoff. Each is Gordon's to do; none is a code change.
+
+1. **Free up memory.** Close Steam's overlay/browser, any browser, Armoury Crate's extras. Get
+   "free RAM" above ~2 GB before starting. `allytune doctor` will start reporting this.
+2. **Put Uncharted 4 in a real fullscreen / flip mode on the dock**, or run the whole test on the
+   **internal panel** instead, where independent flip is reliable and the 120 Hz timing is known
+   good. The handheld noise floor is a profile we need anyway.
+3. **Do not touch the machine during the run — including not running other terminal commands.**
+   Launch LHM, start the game, park the camera, start `noisefloor`, walk away.
+4. **Warm the area first.** Play the exact route spot for 3–4 minutes before the first capture so
+   streaming and shaders have settled, then start the three runs.
+5. Consider `--runs 4` and discarding run 1, given how clearly run 1 was the odd one out.
+
+Re-run and paste the whole output here. An honest second number — better or worse — is the goal.
 
 ### What to expect
 

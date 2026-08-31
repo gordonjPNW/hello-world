@@ -38,10 +38,19 @@ LHM_VERSION = "0.9.6"
 LHM_SHA256 = "086D9F1B5A99E643EDC2CFAAAC16051685B551E4C5AC0B32A57C58C0E529C001"
 LHM_DEFAULT_PORT = 8085
 
-# Sensor names as LibreHardwareMonitor reports them for a Ryzen Z1 Extreme.
-# Matched as case-insensitive substrings because LHM decorates names slightly
-# differently between versions, and an exact match that silently finds nothing
-# is worse than a loose one that finds the right sensor.
+# Sensor names as LibreHardwareMonitor 0.9.6 reports them for the Ryzen Z1
+# Extreme, verified against the live JSON tree on this Ally X on 2026-08-30
+# (see docs/allytune/04-phase1-results.md). Matched as case-insensitive
+# substrings because LHM decorates names slightly differently between versions,
+# and an exact match that silently finds nothing is worse than a loose one that
+# finds the right sensor.
+#
+# Two known imperfections on this hardware:
+#   - gpu_temp_c resolves to "GPU VR SoC" (the voltage regulator). The Z1
+#     Extreme exposes no GPU-die edge temperature; "core (tctl/tdie)" is the
+#     shared APU sensor and is the honest GPU thermal number if VRM is not it.
+#   - cpu_clock_mhz matches nominal "Core #1", not "Core #1 (Effective)", which
+#     diverge sharply at low load. Switch the needle if effective clock matters.
 WANTED = {
     "package_power_w": ("power", "package"),
     "cpu_temp_c": ("temperature", "core (tctl/tdie)"),
