@@ -187,3 +187,84 @@ class TestNoiseFloor(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAbsoluteFloor(unittest.TestCase):
+    """A metric must differ by a meaningful number of milliseconds to fail the rig.
+
+    Percentage spread is unstable near zero, and frametime standard deviation
+    approaches zero exactly when pacing is GOOD. Without this rule the tool
+    inverts: the more consistent the game, the worse its noise floor reads.
+    These tests pin the real numbers measured on the Ally X on 2026-08-30.
+    """
+
+    def _mk(self, **kw):
+        """A Metrics stub; only the fields the noise floor reads are set."""
+        base = dict(frames=1000, dropped=0, duration_s=75.0, avg_fps=35.0,
+                    frame_time_mean_ms=28.4, frame_time_stdev_ms=0.7,
+                    frame_time_p99_ms=30.0, low_1pct_ms=31.0,
+                    low_0p1pct_ms=33.0, gpu_busy_ratio=0.95,
+                    classification="GPU-bound")
+        base.update(kw)
+        return M.Metrics(**base)
+
+    def test_tiny_stdev_wobble_does_not_set_the_headline(self):
+        """The real case: stdev 0.562/0.966/0.579 ms reads as a 57.5% spread.
+
+        That is a 0.40 ms absolute difference -- imperceptible -- while the 1%
+        low genuinely moved 3.2 ms. The headline must point at the 1% low.
+        """
+        runs = [
+            self._mk(frame_time_stdev_ms=0.562, low_1pct_ms=30.257),
+            self._mk(frame_time_stdev_ms=0.966, low_1pct_ms=33.482),
+            self._mk(frame_time_stdev_ms=0.579, low_1pct_ms=30.329),
+        ]
+        nf = N.compute(runs)
+        self.assertEqual(nf.headline_metric, "low_1pct_ms")
+        self.assertAlmostEqual(nf.headline_pct, 10.29, places=1)
+        self.assertIn("NOT USABLE", nf.verdict)
+
+    def test_excluded_metric_is_still_reported(self):
+        """Excluded means 'does not set the headline', never 'hidden'."""
+        runs = [
+            self._mk(frame_time_stdev_ms=0.562),
+            self._mk(frame_time_stdev_ms=0.966),
+            self._mk(frame_time_stdev_ms=0.579),
+        ]
+        nf = N.compute(runs)
+        stdev = [s for s in nf.spreads if s.metric == "frame_time_stdev_ms"][0]
+        self.assertFalse(stdev.eligible)
+        self.assertAlmostEqual(stdev.range_pct, 57.5, places=0)
+        self.assertIn("below noise", stdev.line())
+
+    def test_all_metrics_tiny_is_a_pass_not_a_gap(self):
+        runs = [
+            self._mk(frame_time_stdev_ms=0.50, low_1pct_ms=31.00, frame_time_mean_ms=28.40),
+            self._mk(frame_time_stdev_ms=0.60, low_1pct_ms=31.10, frame_time_mean_ms=28.45),
+            self._mk(frame_time_stdev_ms=0.55, low_1pct_ms=31.05, frame_time_mean_ms=28.42),
+        ]
+        nf = N.compute(runs)
+        self.assertIn("USABLE", nf.verdict)
+        self.assertNotIn("NOT USABLE", nf.verdict)
+
+    def test_a_real_millisecond_regression_still_fails(self):
+        """The floor must not become a way to wave through genuine variance."""
+        runs = [
+            self._mk(low_1pct_ms=30.0),
+            self._mk(low_1pct_ms=34.0),
+            self._mk(low_1pct_ms=30.5),
+        ]
+        nf = N.compute(runs)
+        self.assertEqual(nf.headline_metric, "low_1pct_ms")
+        self.assertIn("NOT USABLE", nf.verdict)
+
+    def test_threshold_is_small_enough_to_be_safe(self):
+        """Half a millisecond at ~28 ms per frame is under 2% of a frame."""
+        self.assertLessEqual(N.MIN_MEANINGFUL_RANGE_MS, 0.5)
+
+    def test_fps_is_not_gated_by_a_millisecond_rule(self):
+        """avg_fps is not measured in milliseconds, so the rule must not touch it."""
+        runs = [self._mk(avg_fps=35.0), self._mk(avg_fps=35.1), self._mk(avg_fps=35.2)]
+        nf = N.compute(runs)
+        fps = [s for s in nf.spreads if s.metric == "avg_fps"][0]
+        self.assertTrue(fps.eligible)
