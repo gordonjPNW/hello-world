@@ -364,6 +364,44 @@ def cmd_runs(args) -> int:
     return 0
 
 
+def cmd_games(args) -> int:
+    """List the installed library and what is known about each title."""
+    from allytune.games import library
+
+    games = library.all_games(installed_only=not args.all)
+    if args.game:
+        g = library.find(args.game)
+        games = [g] if g else []
+
+    def human():
+        if not games:
+            print("No matching games found.")
+            return
+        print("Installed games")
+        print("=" * 92)
+        print("  %-34s %-14s %-10s %-11s %s" % (
+            "game", "settings", "benchmark", "bound", "process"))
+        print("  " + "-" * 88)
+        for g in games:
+            bound = g.bound + (" *" if g.measured else "")
+            print("  %-34s %-14s %-10s %-11s %s" % (
+                g.name[:34], g.settings, g.benchmark, bound, g.process_name))
+        print()
+        print("  * = measured. Everything else is a hypothesis, not a finding.")
+        print()
+        if args.verbose:
+            for g in games:
+                print(g.name)
+                print("  exe      " + str(g.full_exe))
+                if g.settings_path:
+                    print("  settings ~\\" + g.settings_path)
+                print("  " + g.notes)
+                print()
+
+    _out([g.as_dict() for g in games], args.json, human)
+    return 0
+
+
 def cmd_doctor(args) -> int:
     checks = []
 
@@ -479,6 +517,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--game", default=None)
     sp.set_defaults(func=cmd_runs)
 
+    sp = sub.add_parser("games", help="list installed games and what is known about them")
+    common(sp)
+    sp.add_argument("--all", action="store_true",
+                    help="include titles that are not currently installed")
+    sp.add_argument("--verbose", action="store_true", help="show paths and notes")
+    sp.add_argument("--game", default=None, help="show just one title")
+    sp.set_defaults(func=cmd_games)
+
     sp = sub.add_parser("doctor", help="check the installation")
     common(sp)
     sp.set_defaults(func=cmd_doctor)
@@ -494,6 +540,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
+    # Python line-buffers stdout to a terminal but block-buffers it to a file or
+    # pipe. A noisefloor run prints one line every 90 s, so redirected output
+    # looked frozen for the whole eight minutes -- indistinguishable from a hung
+    # capture, which is the worst possible failure mode for a command you are
+    # told to walk away from.
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+    except (AttributeError, ValueError):
+        pass  # not a real stream (captured in tests); nothing to do
+
     args = build_parser().parse_args(argv)
     if getattr(args, "process", None) == "":
         args.process = None
