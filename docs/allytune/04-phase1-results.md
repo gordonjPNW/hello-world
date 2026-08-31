@@ -10,17 +10,25 @@ Gordon on 2026-08-30 rather than chased further, on the grounds that it is a lar
 sufficient for the big-knob comparisons that come first. What that permits and forbids is spelled
 out in [What a 10.29% floor buys](#what-a-1029-floor-buys).
 
-Earlier status, kept for the trail: attempt 2 recorded a 1.98% floor, Attempt 1 gave 49.8% and failed; attempt 2, after clearing memory pressure
-and keeping other windows off the game, gave 1.98%, with every metric repeating to within 2% —
-including the frametime standard deviation that had blown out to 49.8% the first time.
+**The docked display fault found along the way is fixed.** At 4K the desktop compositor was
+discarding 55% of the game's frames — the screen updated 12.4 times a second while the game
+rendered 27.7. Setting the game to 1080p restored `Hardware Composed: Independent Flip` at 100%
+with 0.0% dropped, and took average fps from 26.8 to 35.1. That was a real fault in the machine,
+not in the rig, and the rig is what found it.
 
-**But the docked configuration has a serious display-path fault that must be fixed before any
-tuning.** All three runs of attempt 2 sat in `Composed: Flip`, and the desktop compositor
-discarded **55% of the game's frames**: the screen updated 12.4 times a second while the game
-rendered 27.7. So the noise floor is honest about the *measurement chain* but not yet about the
-configuration we intend to tune. Once the flip path is fixed the frametime distribution changes
-completely and **the floor has to be re-established**. Detail in
-[The acceptance test](#the-acceptance-test).
+The three attempts, in order:
+
+| Attempt | Config | Floor | What it actually showed |
+|---|---|---|---|
+| 1 | docked 4K | 49.8% | Memory exhausted (0.24 GB free), LHM window on screen, flip path collapsing mid-run |
+| 2 | docked 4K | 1.98% | Repeatable — but uniformly broken: 55% of frames discarded |
+| 3 | docked 1080p | **10.29%** | Display path healthy; one background transient in run 2 |
+
+Attempt 2's 1.98% is the trap this project exists to avoid: a beautifully repeatable measurement
+of a badly broken configuration. It is kept in the record because recognising that pattern matters
+more than the number.
+
+Detail in [The acceptance test](#the-acceptance-test).
 
 ---
 
