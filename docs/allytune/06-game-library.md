@@ -182,11 +182,17 @@ in detail.
 
 ## What is genuinely still open
 
-- **The noise floor is not established** for the healthy docked configuration. The last attempt
-  read 40.94%, and the failure was a clean monotonic warm-up trend across three runs rather than
-  random noise — the system was still settling because we measured immediately after a settings
-  change and a restart. Warm up for five minutes, then re-run. Until that number exists, treat
-  every comparison as provisional.
+- **Resolved 2026-09-01.** The docked noise floor for Uncharted 4 with the full recipe applied is
+  **1.53%** — phase 1's acceptance test now passes. It needed a five-minute warm-up before
+  measuring; measuring immediately after the relaunch (required by `SwapEffectUpgradeEnable`) gave
+  a monotonic warm-up trend and a useless 40.94%. Full detail in
+  [`04-phase1-results.md`](04-phase1-results.md#result--fifth-attempt-2026-09-01-docked-1440p-warmed-up-pass-at-153).
+  **But the passing run delivered 25.5 fps against a 30 fps cap**, because only 1.2 GB of RAM was
+  free during capture — well below the ~3.5 GB a clean 30 fps needed elsewhere. Check free RAM
+  (`allytune inventory`) before trusting an absolute fps number from any capture, even a well-passed
+  one; the floor being tight says the rig is trustworthy, not that the machine had headroom.
+  **The handheld profile's noise floor is still not established at all** — everything measured so
+  far has been docked. That is the next one to run.
 - **`gpu_temp_c` is a proxy.** The Z1 Extreme exposes no GPU-die edge sensor; allytune matches
   `GPU VR SoC`, the voltage regulator.
 - **The 60 Hz ceiling is a dock limitation, not a monitor one.** The AW3225DM does 1440p at

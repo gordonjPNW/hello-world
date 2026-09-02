@@ -4,29 +4,42 @@ First session with the hardware present. Everything below was read off this Ally
 **2026-08-30**, not inferred. Where it contradicts an earlier document, the earlier document was
 written without device access and is wrong; the correction is noted and the source doc updated.
 
-**Status: the rig is built and working. Best measured noise floor is 10.29% on the 1% low
-frametime (docked, 1080p), which is above the 3% target.** Accepted as a working baseline by
-Gordon on 2026-08-30 rather than chased further, on the grounds that it is a large improvement and
-sufficient for the big-knob comparisons that come first. What that permits and forbids is spelled
-out in [What a 10.29% floor buys](#what-a-1029-floor-buys).
+**Status: PHASE 1'S ACCEPTANCE TEST IS PASSED. Noise floor 1.53% on the 1% low frametime, docked,
+under the 3% target.** Five attempts, spanning three sessions, to get here — see the table below.
+The rig itself is now trusted: what it says about a docked Uncharted 4 configuration can be
+believed to within about 1.5%.
 
-**The docked display fault found along the way is fixed.** At 4K the desktop compositor was
-discarding 55% of the game's frames — the screen updated 12.4 times a second while the game
-rendered 27.7. Setting the game to 1080p restored `Hardware Composed: Independent Flip` at 100%
-with 0.0% dropped, and took average fps from 26.8 to 35.1. That was a real fault in the machine,
-not in the rig, and the rig is what found it.
+**A second, separate finding rides along with the pass, and it deserves equal weight: the passing
+run did not deliver the performance the configuration was set up for.** Uncharted 4 was capped at
+30 fps and delivered a rock-steady **25.5 fps** instead — not because the display path failed
+(it was 100% `Independent Flip`, 0.0% dropped, in every one of the three runs) but because only
+1.2 GB of RAM was free during capture, well below the ~3.5 GB the earlier clean 30 fps
+confirmation had. **A trustworthy rig and a well-tuned configuration are different things, and this
+result is proof: the floor can pass while the number underneath it is being quietly held back by
+something else entirely.** Detail in
+[Result — fifth attempt](#result--fifth-attempt-2026-09-01-docked-1440p-warmed-up-pass-at-153).
 
-The three attempts, in order:
+**The docked display fault found along the way is fixed**, and stayed fixed across every attempt
+since. At 4K the desktop compositor was discarding 55% of the game's frames — the screen updated
+12.4 times a second while the game rendered 27.7. The full fix ended up needing six things, not
+one — see [`docs/allytune/06-game-library.md`](06-game-library.md) for the complete recipe, since
+it generalises to every other installed game and is recorded there.
+
+All five attempts, in order:
 
 | Attempt | Config | Floor | What it actually showed |
 |---|---|---|---|
 | 1 | docked 4K | 49.8% | Memory exhausted (0.24 GB free), LHM window on screen, flip path collapsing mid-run |
 | 2 | docked 4K | 1.98% | Repeatable — but uniformly broken: 55% of frames discarded |
-| 3 | docked 1080p | **10.29%** | Display path healthy; one background transient in run 2 |
+| 3 | docked 1080p | 10.29% | Display path healthy; one background transient in run 2 |
+| 4 | docked 1440p, full recipe | 40.94% | Display path perfect, 0% dropped in all 3 runs — but a monotonic warm-up trend, not noise |
+| 5 | docked 1440p, full recipe, warmed up | **1.53% — PASS** | Clean and repeatable; delivered fps below the 30 cap due to RAM pressure |
 
 Attempt 2's 1.98% is the trap this project exists to avoid: a beautifully repeatable measurement
 of a badly broken configuration. It is kept in the record because recognising that pattern matters
-more than the number.
+more than the number. Attempt 5 is the mirror image of that trap solved correctly: a clean floor
+that comes with an honest caveat about the number it is measuring, rather than a clean floor
+presented as if the whole picture were good news.
 
 Detail in [The acceptance test](#the-acceptance-test).
 
@@ -498,27 +511,100 @@ recorded here rather than excluded — dropping the inconvenient run is precisel
 rig starts lying to its owner — but it does mean the rig demonstrably reaches well under 1% when
 nothing interrupts it.
 
-### What a 10.29% floor buys
+### Result — fourth attempt, 2026-08-31 (docked, 1440p, full recipe): 40.94%
+
+Run immediately after finishing the display recipe in `06-game-library.md` — borderless
+2560×1440 matching the desktop, FSR 2 Balanced, V-Sync off, in-game "Lock Frames to 30" on, both
+overlays off. The display path held perfectly for the first time across a full three-run set:
+
+```
+run 1: 1% low 41.76  stdev 2.07  mean 33.90  fps 29.5   Hardware Composed: Independent Flip 100%  0.0% dropped
+run 2: 1% low 39.65  stdev 2.04  mean 34.68  fps 28.8   Hardware Composed: Independent Flip 100%  0.0% dropped
+run 3: 1% low 37.75  stdev 1.33  mean 34.06  fps 29.4   Hardware: Independent Flip           100%  0.0% dropped
+
+Headline: 40.94% (frametime stdev)      Verdict: NOT USABLE
+```
+
+Zero dropped frames in every run — the display-path problem this whole document is largely about
+was genuinely solved by this point. The failure is a different, much narrower one: **every pacing
+metric moved in the same direction across all three runs.** 1% low: 41.76 → 39.65 → 37.75. Stdev:
+2.07 → 2.04 → 1.33. That is not noise scattering randomly; noise scatters. A clean monotonic trend
+across three consecutive runs is *drift* — the system was still settling after the game had just
+been relaunched (required, because `SwapEffectUpgradeEnable` is read at process start) with three
+settings changed at once. The plan's own protocol says to discard the first run after a settings
+change and warm up before measuring; this attempt skipped both.
+
+### Result — fifth attempt, 2026-09-01 (docked, 1440p, warmed up): PASS at 1.53%
+
+Identical configuration to attempt 4. The only change: **five minutes of ordinary play at the
+route before starting the capture**, rather than measuring immediately after the relaunch.
+
+```
+run 1: 1% low 46.79  stdev 3.14  mean 39.42  fps 25.4   Hardware Composed: Independent Flip 100%  0.0% dropped
+run 2: 1% low 46.52  stdev 3.16  mean 39.26  fps 25.5   Hardware Composed: Independent Flip 100%  0.0% dropped
+run 3: 1% low 46.08  stdev 3.15  mean 39.06  fps 25.6   Hardware Composed: Independent Flip 100%  0.0% dropped
+
+                        mean      spread   cv       three runs
+  1% low frametime      46.463    1.53%    0.77%    [46.792, 46.516, 46.082]
+  frametime stdev        3.152    0.79%    0.39%    [ 3.139,  3.164,  3.153]  (below noise)
+  mean frametime        39.243    0.91%    0.46%    [39.415, 39.255, 39.059]  (below noise)
+  0.1% low frametime    47.141    1.72%    0.92%    [47.632, 46.971, 46.821]
+  average fps           25.483    0.91%    0.46%    [25.371, 25.474, 25.603]
+
+  Headline: 1.53%  (1% low frametime)      Verdict: USABLE
+```
+
+The warm-up hypothesis was confirmed directly: the trend from attempt 4 is gone. All three runs
+now sit within a tight band of each other instead of trending, and the display path is again 100%
+independent flip with 0% dropped throughout — that part of the recipe holds under real, sustained
+play, not just for a 20-second probe.
+
+**But look at what it actually measured: 25.5 fps, not the 30 the cap was set to.** Mean frametime
+is 39.2 ms against the 33.33 ms a locked 30 requires — the game is consistently, repeatably,
+running about 18% slower than its own cap. Free RAM during this capture was **1.2 GB**, against
+roughly 3.5–3.7 GB during the earlier isolated probe that *did* hit a clean 30.0 fps with a 0.68 ms
+stdev (see `06-game-library.md`). The likely contributors, checked live immediately after the run:
+
+```
+u4.exe            4.5 GB   (real; the game itself, larger at 1440p than at 1080p)
+claude sessions   1.5 GB   across 12 processes -- this agent's own session
+steamwebhelper    0.6 GB   across 7 processes
+msedge + webview  0.8 GB
+Windows Defender  0.2 GB
+```
+
+The Claude Code session driving this capture is itself a real, measurable part of the memory
+pressure. It cannot be closed without losing the ability to run the capture, so this is recorded
+as a limitation of *unattended, agent-driven* measurement specifically, not fixed here. A human
+running the same protocol from a bare terminal, with Steam's window and Edge closed, would likely
+recover a meaningful share of that 1.2 GB and might see the cap actually held.
+
+This is the central lesson of attempt 5, stated plainly: **the noise floor and the measured
+performance are two separate facts, and passing on one says nothing about the other.** The rig can
+be — now is — completely trustworthy about a number, while that number itself is being suppressed
+by something the rig had no way to control. Every future capture on this device should check free
+RAM before trusting an absolute performance figure, even when the floor is excellent.
+
+### What a 1.53% floor buys
 
 The floor is not a pass/fail for the project, it is a resolution limit, and it is worth being
-precise about what it permits:
+precise about what it permits now that it has come down from 10.29% to 1.53%:
 
-| Change | Typical size | Resolvable at 10.29%? |
+| Change | Typical size | Resolvable at 1.53%? |
 |---|---|---|
 | Wattage steps (10 → 17 → 25 W) | 35–148% on this chip | **Yes, comfortably** |
-| Resolution (4K → 1080p) | ~30% here, measured | **Yes** |
-| FSR quality levels | 15–30% | **Yes** |
-| Upscaler on/off | 15–25% | **Yes** |
-| Shadow / texture quality steps | 5–15% | **Marginal — often not** |
-| Fine individual settings | 2–8% | **No** |
+| Resolution changes | ~20–30% | **Yes, comfortably** |
+| FSR quality levels | 15–30% | **Yes, comfortably** |
+| Upscaler on/off | 15–25% | **Yes, comfortably** |
+| Shadow / texture quality steps | 5–15% | **Yes** — this was only marginal at the old 10.29% floor |
+| Fine individual settings | 2–8% | **Mostly yes; the smallest end (2–3%) is still noise** |
 
-So the big knobs — the ones that decide whether a game is playable at all — are testable now. Fine
-settings tuning is not, and any such result must be reported as indistinguishable from noise until
-the floor comes down. Every report prints the floor alongside the result precisely so this cannot
-be forgotten.
-
-To get the floor down later: eliminate the background transient (close Steam's client window,
-disconnect WiFi during runs), or raise the run count so a single interruption carries less weight.
+At 1.53%, essentially the whole settings sweep the plan describes for phase D becomes trustworthy,
+not just the big knobs. The one caveat: this floor was measured with the machine under real memory
+pressure (1.2 GB free) and still held — which is reassuring for robustness, but the *headline
+number itself* (frames delivered) should not be trusted at face value under those conditions, per
+attempt 5 above. Re-verify free RAM before treating an absolute fps figure from a low-memory run as
+meaningful, even though the run-to-run consistency was excellent.
 
 ### Note for phase 2: the telemetry tool corrupts the measurement
 
@@ -528,13 +614,19 @@ Minimise it to the tray (its config is pre-seeded with `minTrayMenuItem`), or ac
 power telemetry and clean frametimes may not be simultaneously available. Attempt 2 has no power
 data for exactly this reason — and on AC the battery sensor reads zero, so there was no fallback.
 
-### What to expect
+### Reading a noise floor — for every future run, not just this one
 
-- **Under ~3%** — the rig works. Proceed to the wattage and settings sweeps.
+This device's Uncharted-4-docked floor is now known (1.53%), but the same test has to be repeated
+for the handheld profile, and for every other game in the library. This is the interpretation guide
+for all of those, kept general on purpose:
+
+- **Under ~3%** — the rig works for this configuration. Proceed to the wattage and settings sweeps.
 - **3–5%** — marginal. Only large effects are trustworthy. Reduce variance first.
-- **At or above 5%** — phase 1 is not done. The usual suspects, in order: a route that is not
-  actually repeatable, thermal state differing between runs, shader compilation on the first run
-  after any change, and background processes. Fix the variance before building anything else.
+- **At or above 5%** — not done yet for this configuration. The usual suspects, in order: measuring
+  too soon after a settings change or relaunch (attempt 4's failure mode, exactly), a route that is
+  not actually repeatable, thermal state differing between runs, and background processes. Fix the
+  variance before building anything else on top of that configuration.
 
 Whatever it says, it goes in this document unedited. A rig that cannot resolve 5% makes every
-downstream conclusion worthless, and knowing that is far more valuable than a green tick.
+downstream conclusion worthless, and knowing that is far more valuable than a green tick — which is
+exactly why attempt 5's pass is reported alongside its RAM-pressure caveat rather than alone.
