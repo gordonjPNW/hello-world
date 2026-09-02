@@ -38,9 +38,15 @@ Never touched, and deliberately absent from every category below:
 from __future__ import annotations
 
 import subprocess
+import time
 from dataclasses import dataclass, field, asdict
 
 from allytune import winbridge as wb
+
+# Grace period between a polite close attempt and forcing the stragglers, for
+# categories marked `graceful`. Long enough for a well-behaved app to actually
+# exit; short enough that pressing the button doesn't feel like it hung.
+GRACE_SWEEP_DELAY_S = 1.2
 
 # Thresholds are the ones this project actually measured, not round numbers
 # picked for looking tidy. See docs/allytune/04-phase1-results.md, attempt 5.
@@ -78,28 +84,26 @@ CATEGORIES = (
         note=(
             "Monitor RGB and management software for the AW3225DM -- separate "
             "from Armoury Crate, and previously unflagged as a RAM consumer in "
-            "this project. Not needed while a game is running."
+            "this project. Not needed while a game is running. Roughly a "
+            "quarter of these run under a different account and need this "
+            "dashboard started from an Administrator terminal to fully close; "
+            "the rest close either way."
         ),
     ),
     Category(
         key="browsers",
         label="Browsers",
-        processes=("msedge", "msedgewebview2", "chrome", "firefox"),
+        # Deliberately NOT msedgewebview2 -- see the note below the table.
+        processes=("msedge", "chrome", "firefox"),
         graceful=True,
         default_on=True,
-        note="Closed gently, so an unsaved form or tab can prompt before it goes.",
-    ),
-    Category(
-        key="steam_ui",
-        label="Steam's UI overhead",
-        processes=("steamwebhelper",),
-        graceful=False,
-        default_on=True,
         note=(
-            "Only the Chromium-based UI renderers -- store, friends, overlay "
-            "chrome. steam.exe itself is never touched, so a running game, its "
-            "DRM check and cloud saves are unaffected. Steam relaunches these "
-            "on demand next time you open its window."
+            "Asked to close politely first; anything still running after "
+            f"{GRACE_SWEEP_DELAY_S:.0f}s is closed firmly. Modern browsers run "
+            "many windowless helper processes -- verified on this device, every "
+            "remaining msedge process had no window at all -- so a polite-only "
+            "close leaves most of the memory behind. Save anything open before "
+            "pressing the button."
         ),
     ),
     Category(
@@ -125,6 +129,23 @@ CATEGORIES = (
 )
 
 _CATEGORY_BY_KEY = {c.key: c for c in CATEGORIES}
+
+# Tried and reverted, 2026-09-01: a "Steam's UI overhead" category that
+# force-closed steamwebhelper. Directly measured through this tool's own
+# browser test: killing it makes steam.exe's own watchdog immediately relaunch
+# the whole helper tree, and the fresh tree used MORE memory afterward (538 MB
+# before -> 826 MB after, all seven processes carrying a fresh start time
+# matching the moment of the click). A category whose measured effect is
+# negative does not belong here even unchecked -- omitted outright rather than
+# left as a tempting, mislabelled checkbox.
+#
+# Tried and narrowed, same day: msedgewebview2 was in `browsers` originally,
+# on the assumption it was leftover Edge browser content. Traced directly: on
+# this device every msedgewebview2 process is owned by SearchHost.exe --
+# Windows Search's own embedded web content, not a browser tab at all
+# (cmdline carries `--webview-exe-name=SearchHost.exe`). Force-closing it
+# just makes the OS shell relaunch the whole tree within seconds, the same
+# shape of problem as steamwebhelper. Dropped from `browsers`.
 
 # Second, independent guard. Even a mistaken entry in CATEGORIES cannot result
 # in one of these being targeted -- checked before every taskkill.
@@ -267,7 +288,20 @@ def scan(live: dict | None = None, free_total: tuple | None = None) -> NoiseRepo
 
 @dataclass
 class CleanupResult:
+    """What actually happened, verified rather than assumed.
+
+    `closed` is populated by re-checking the live process list after every
+    attempt, not by trusting taskkill's exit code -- a real gap found while
+    building this: an Access Denied failure (exit 1) was previously still
+    appended to `closed` unconditionally, so the tool reported success on
+    processes it had not touched. `failed_permission` is exactly that case,
+    named so the UI can say the one thing that actually fixes it: run this
+    dashboard from an Administrator terminal.
+    """
+
     closed: list = field(default_factory=list)
+    failed_permission: list = field(default_factory=list)
+    failed_other: list = field(default_factory=list)
     skipped_protected: list = field(default_factory=list)
     free_gb_before: float = 0.0
     free_gb_after: float = 0.0
@@ -276,24 +310,44 @@ class CleanupResult:
         return asdict(self)
 
 
+def _default_executor(args):
+    proc = subprocess.run(args, capture_output=True, text=True, timeout=10)
+    return proc.returncode, (proc.stderr or proc.stdout or "")
+
+
 def cleanup(
     category_keys,
     live: dict | None = None,
     executor=None,
     free_before_gb: float | None = None,
     free_after_gb: float | None = None,
+    live_mid: dict | None = None,
+    live_after: dict | None = None,
+    sleep_fn=None,
 ) -> CleanupResult:
-    """Close every running process in the given categories, then re-measure.
+    """Close every running process in the given categories, then verify.
 
     Categories not present in CATEGORIES are silently ignored rather than
     raising -- a stale key from an old page load must not become an error the
     button-presser has to make sense of.
 
-    `live`, `executor` and the two `free_*_gb` values are injectable for
-    testing, standing in for the real process query, the real `taskkill` call,
-    and the real before/after RAM measurement respectively. This is what makes
-    the protected-name guard below testable as an actual refusal rather than an
-    unreachable comment -- see tests/test_cleanup.py.
+    A `graceful` category is asked nicely first (taskkill without /F). The
+    decision to escalate to /F is made by checking who is ACTUALLY STILL
+    RUNNING after `GRACE_SWEEP_DELAY_S`, never by trusting taskkill's exit
+    code. This was found to be load-bearing, not defensive paranoia: a single
+    `taskkill /IM msedge.exe` (no /F) against 18 same-named processes exited 0
+    overall because 4 of them happened to have a message loop to signal --
+    the other 14, all windowless renderer/GPU/utility processes, individually
+    reported "can only be terminated forcefully" and were left running, with
+    the command's overall exit code giving no hint of that. Gating escalation
+    on exit code alone would silently have left most of a browser's memory
+    behind exactly as it did here before this was found and fixed.
+
+    `live`, `executor`, `live_mid`, `live_after` and the two `free_*_gb`
+    values are injectable for testing, standing in for the real process
+    query, the real `taskkill` call, the real mid-point process query used to
+    decide escalation, the real post-cleanup process query, and the real
+    before/after RAM measurement respectively.
     """
     free_before = free_before_gb if free_before_gb is not None else free_ram_gb()[0]
     protected = _protected_names()
@@ -301,9 +355,11 @@ def cleanup(
 
     if live is None:
         live = _live_processes()
-    run = executor or (lambda args: subprocess.run(
-        args, capture_output=True, text=True, timeout=10
-    ))
+    run = executor or _default_executor
+    sleep = sleep_fn or time.sleep
+
+    targets: list = []              # (process name, graceful)
+    last_attempt: dict = {}         # process name -> (returncode, stderr)
 
     for key in category_keys:
         cat = _CATEGORY_BY_KEY.get(key)
@@ -317,11 +373,27 @@ def cleanup(
                 # this is the line that makes it unreachable rather than trusted.
                 result.skipped_protected.append(proc)
                 continue
-            args = ["taskkill", "/IM", proc + ".exe"]
-            if not cat.graceful:
-                args.append("/F")
-            run(args)
+            args = ["taskkill", "/IM", proc + ".exe"] + ([] if cat.graceful else ["/F"])
+            last_attempt[proc] = run(args)
+            targets.append((proc, cat.graceful))
+
+    graceful_names = [p for p, g in targets if g]
+    if graceful_names:
+        sleep(GRACE_SWEEP_DELAY_S)
+        mid = live_mid if live_mid is not None else _live_processes()
+        for proc in graceful_names:
+            if proc.lower() in mid:
+                last_attempt[proc] = run(["taskkill", "/IM", proc + ".exe", "/F"])
+
+    live_now = live_after if live_after is not None else _live_processes()
+    for proc, _graceful in targets:
+        rc, err = last_attempt[proc]
+        if proc.lower() not in live_now:
             result.closed.append(proc)
+        elif "access is denied" in (err or "").lower():
+            result.failed_permission.append(proc)
+        else:
+            result.failed_other.append(proc)
 
     result.free_gb_after = (
         free_after_gb if free_after_gb is not None else free_ram_gb()[0]

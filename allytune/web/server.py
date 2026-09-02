@@ -350,9 +350,21 @@ async function doCleanup() {
     const gained = (data.free_gb_after - data.free_gb_before).toFixed(1);
     const box = document.getElementById('result');
     box.className = 'show';
-    box.innerHTML = 'Closed ' + data.closed.length + ' process(es), freed ' +
+    let html = 'Closed ' + data.closed.length + ' process(es), freed ' +
       '<b>' + gained + ' GB</b> (' + fmt1(data.free_gb_before) + ' → ' +
       fmt1(data.free_gb_after) + ' GB).';
+    if (data.failed_permission.length) {
+      html += '<br><span style="color:var(--warn)">' + data.failed_permission.length +
+        ' process(es) need Administrator to close: ' +
+        data.failed_permission.join(', ') +
+        '. Restart <code>allytune dashboard</code> from an elevated terminal ' +
+        'to close these too.</span>';
+    }
+    if (data.failed_other.length) {
+      html += '<br><span style="color:var(--bad)">' + data.failed_other.length +
+        ' did not close for another reason: ' + data.failed_other.join(', ') + '.</span>';
+    }
+    box.innerHTML = html;
   } catch (e) {
     const box = document.getElementById('result');
     box.className = 'show';

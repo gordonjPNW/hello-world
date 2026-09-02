@@ -137,11 +137,26 @@ against a live process dump, never inferred from a pattern. A second, independen
 (`_protected_names()`) blocks the running game, GPU/TDP processes (`ArmouryCrateSE*`,
 `RadeonSoftware`, `AMDRSServ`), the on-screen keyboard (`TextInputHost`, `TabTip`), and this
 agent's own session (`claude`) even if a future edit to the category table got one of those wrong.
-Steam's UI overhead (`steamwebhelper`) is closeable; `steam.exe` itself never is.
 
 Found along the way and previously unflagged: **Alienware Command Center / Dell TechHub is a
 separate ~1.4 GB overlay/RGB stack**, distinct from Armoury Crate, that had never been identified
 as a RAM consumer before. It is the single largest reclaimable category.
+
+**Three real bugs were found by actually pressing the button, not by reasoning about the code:**
+
+1. Closing was reported as successful whenever taskkill was *invoked*, not when the process was
+   verified gone. Access Denied (exit 1) on several Dell TechHub processes was being counted as a
+   success. Fixed: `closed` / `failed_permission` / `failed_other` are now decided by re-checking
+   the live process list afterward, never by trusting the exit code.
+2. **The exit code is actively misleading for a multi-process close.** `taskkill /IM msedge.exe`
+   (no `/F`) against several same-named processes exits 0 overall if even one of them had a window
+   to signal -- confirmed live: 4 of 18 succeeded, 14 needed `/F`, and the command still reported
+   success. The graceful-then-force escalation is now driven by an actual post-attempt process
+   check, never by the exit code.
+3. `steamwebhelper` (closing it made `steam.exe`'s watchdog relaunch the whole tree at a *higher*
+   memory cost, 538→826 MB) and `msedgewebview2` (traced to `--webview-exe-name=SearchHost.exe` --
+   Windows Search's own embedded content, not a browser tab) were both tried and dropped after
+   being directly measured to backfire. Neither is a closeable target.
 
 ### The principle behind all of it
 
