@@ -189,8 +189,10 @@ in detail.
   [`04-phase1-results.md`](04-phase1-results.md#result--fifth-attempt-2026-09-01-docked-1440p-warmed-up-pass-at-153).
   **But the passing run delivered 25.5 fps against a 30 fps cap**, because only 1.2 GB of RAM was
   free during capture — well below the ~3.5 GB a clean 30 fps needed elsewhere. Check free RAM
-  (`allytune inventory`) before trusting an absolute fps number from any capture, even a well-passed
-  one; the floor being tight says the rig is trustworthy, not that the machine had headroom.
+  (`allytune inventory`, or `allytune dashboard`'s `/prep` page) before trusting an absolute fps
+  number from any capture, even a well-passed one; the floor being tight says the rig is
+  trustworthy, not that the machine had headroom. `/prep` also found ~1.4 GB in Alienware Command
+  Center / Dell TechHub processes, running alongside Armoury Crate and previously unflagged.
   **The handheld profile's noise floor is still not established at all** — everything measured so
   far has been docked. That is the next one to run.
 - **`gpu_temp_c` is a proxy.** The Z1 Extreme exposes no GPU-die edge sensor; allytune matches

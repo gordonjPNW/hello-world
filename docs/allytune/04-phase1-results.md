@@ -585,6 +585,12 @@ be — now is — completely trustworthy about a number, while that number itsel
 by something the rig had no way to control. Every future capture on this device should check free
 RAM before trusting an absolute performance figure, even when the floor is excellent.
 
+**Follow-up, 2026-09-01:** `allytune dashboard`'s `/prep` page exists directly because of this
+finding — a one-tap RAM check and cleanup before a gaming session, built around these exact
+thresholds. See `CLAUDE.md`. It surfaced something bigger than expected: Alienware Command
+Center / Dell TechHub, running alongside but entirely separate from Armoury Crate, was quietly
+using **1.4 GB** and had never been identified as a factor in any attempt above.
+
 ### What a 1.53% floor buys
 
 The floor is not a pass/fail for the project, it is a resolution limit, and it is worth being

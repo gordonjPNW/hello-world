@@ -124,6 +124,25 @@ is not usable mid-game on a 7" handheld, and Gordon asked for a phone view. It i
 rather than a native app on purpose — nothing to install, works on the phone, the touchscreen and
 the docked monitor alike.
 
+### Prep-for-gaming page — the one thing on this server that writes
+
+Same server, at `/prep`. Built in response to the attempt-5 RAM finding above: shows free RAM
+against the thresholds this project actually measured (4 GB+ ready, 2–4 GB tight, under 2 GB —
+where a 25.5 fps result against a 30 fps cap was measured), with one-tap checkboxes to close
+background apps by category. Logic lives in `allytune/system/cleanup.py`, kept separate from the
+web layer so it has its own tests.
+
+**Safety model: allowlist only.** Every closeable process is named explicitly, hand-reviewed
+against a live process dump, never inferred from a pattern. A second, independent guard
+(`_protected_names()`) blocks the running game, GPU/TDP processes (`ArmouryCrateSE*`,
+`RadeonSoftware`, `AMDRSServ`), the on-screen keyboard (`TextInputHost`, `TabTip`), and this
+agent's own session (`claude`) even if a future edit to the category table got one of those wrong.
+Steam's UI overhead (`steamwebhelper`) is closeable; `steam.exe` itself never is.
+
+Found along the way and previously unflagged: **Alienware Command Center / Dell TechHub is a
+separate ~1.4 GB overlay/RGB stack**, distinct from Armoury Crate, that had never been identified
+as a RAM consumer before. It is the single largest reclaimable category.
+
 ### The principle behind all of it
 
 Miles Morales tuned well because 10 W → 17 W was a **148%** difference — visible by eye, immune to
