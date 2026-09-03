@@ -23,7 +23,9 @@ PowerShell. Terminal access is not a constraint.
   the iGPU. Both numbers are true and the difference matters: a game plus Windows is working
   against 15.7 GB. Verified 2026-08-30.
 - GPU driver 32.0.31007.6002 (2026-05-17).
-- Windows username is `gordo`. Project lives at `C:\Users\gordo\Documents\Claude\hello-world`.
+- Windows username is `gordo`. Project lives at `C:\Users\gordo\Documents\Claude\allytune`. (Renamed
+  from `hello-world` on 2026-09-02 — same git repo, same GitHub history, folder renamed only. The
+  GitHub remote is still named `hello-world`; only the local folder changed.)
 - `C:\Users\gordo\Documents\Claude\set-refresh-rate.ps1` predates this project. allytune will
   absorb it and add `-List` / `-Display N`, because it currently targets whichever display is
   primary and silently addresses the TV while docked.

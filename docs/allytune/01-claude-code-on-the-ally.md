@@ -45,8 +45,8 @@ measurement, so make elevated the habit now.
 ```powershell
 mkdir C:\Users\gordo\Documents\Claude -Force
 cd C:\Users\gordo\Documents\Claude
-git clone https://github.com/gordonjPNW/hello-world.git
-cd hello-world
+git clone https://github.com/gordonjPNW/hello-world.git allytune
+cd allytune
 git checkout claude/rog-ally-game-optimizer-5ljjo5
 
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap-ally.ps1 -EnableSsh
@@ -71,7 +71,7 @@ makes the analysis and file-patching work in later phases considerably clumsier.
 Open a **new** terminal — PATH changes do not reach a shell that was already running — then:
 
 ```powershell
-cd C:\Users\gordo\Documents\Claude\hello-world
+cd C:\Users\gordo\Documents\Claude\allytune
 claude
 ```
 
@@ -126,7 +126,8 @@ we actually run, without also pre-approving the one that goes wrong.
 ```
 C:\Users\gordo\Documents\Claude\
   set-refresh-rate.ps1        existing - allytune will absorb and extend this
-  hello-world\
+  allytune\                   the git clone -- named allytune locally; the
+                               GitHub remote itself is still called hello-world
     .claude\settings.json     permission allowlist
     scripts\bootstrap-ally.ps1
     docs\allytune\            the plan and this guide

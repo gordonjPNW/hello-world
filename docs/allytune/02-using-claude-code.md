@@ -54,7 +54,7 @@ why the setup guide gives a separate CMD version of that one line.
 The terminal is always "in" a folder. You need it in the project folder. Type this and press Enter:
 
 ```
-cd C:\Users\gordo\Documents\Claude\hello-world
+cd C:\Users\gordo\Documents\Claude\allytune
 ```
 
 `cd` means "change directory". The prompt changes to show the new location.
@@ -210,7 +210,7 @@ the top as **"Accessing Workspace"**.
 is whatever folder your terminal was standing in when you typed the command — not necessarily the
 one you meant.
 
-- Path is `C:\Users\gordo\Documents\Claude\hello-world` → **Yes, I trust this folder**.
+- Path is `C:\Users\gordo\Documents\Claude\allytune` → **Yes, I trust this folder**.
 - Path is anything else, especially `C:\Users\gordo` → **No, exit**. Then `cd` to the project and
   start again.
 
@@ -242,7 +242,7 @@ Codes are single-use and expire quickly.
 
 ```
 1. Windows key → type "terminal" → right-click → Run as administrator
-2. cd C:\Users\gordo\Documents\Claude\hello-world
+2. cd C:\Users\gordo\Documents\Claude\allytune
 3. tune                     (or: tune resume, to pick up where you left off)
 4. ...work...
 5. /exit

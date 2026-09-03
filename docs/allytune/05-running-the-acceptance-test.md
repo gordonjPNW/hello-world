@@ -48,7 +48,7 @@ Plug it in, let it reach at least 50%, and **leave it plugged in for all three r
 In the Administrator terminal, type these two lines, pressing Enter after each:
 
 ```bash
-cd C:\Users\gordo\Documents\Claude\hello-world
+cd C:\Users\gordo\Documents\Claude\allytune
 ```
 
 ```bash
