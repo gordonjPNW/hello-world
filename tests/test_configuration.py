@@ -25,6 +25,16 @@ EXTERNAL = Display(
     width=3840, height=2160, refresh_hz=60, primary=False, internal=False,
 )
 
+# Verified on this device, 2026-09-02: after Windows+P switched output to the
+# internal panel, WmiMonitorID still enumerated the Alienware over its
+# still-connected cable, purely by EDID -- width/height read 0 because nothing
+# was actually being displayed there. "Detected" and "in use" are different
+# facts, and only the second one should count as docked evidence.
+EXTERNAL_CABLED_BUT_INACTIVE = Display(
+    device="DISPLAY2", name="AW3225DM", manufacturer="DEL",
+    width=0, height=0, refresh_hz=0, primary=False, internal=False,
+)
+
 
 def inv(**kw) -> Inventory:
     base = dict(displays=[INTERNAL], on_ac=False, elevated=True,
@@ -56,6 +66,26 @@ class TestConfiguration(unittest.TestCase):
     def test_external_only_on_ac_still_reads_as_docked(self):
         """The Ally's lid can be closed with only the monitor active."""
         got = classify_configuration(inv(on_ac=True, displays=[EXTERNAL]))
+        self.assertEqual(got, "docked")
+
+    def test_cabled_but_inactive_external_does_not_block_handheld(self):
+        """The exact bug found live: switching to the internal panel via
+        Windows+P while the monitor's cable stays connected must still read
+        as handheld, not 'undocked-external'. WmiMonitorID detects the
+        monitor by EDID regardless of whether Windows is displaying anything
+        on it -- 'detected' is not 'in use'."""
+        got = classify_configuration(
+            inv(displays=[INTERNAL, EXTERNAL_CABLED_BUT_INACTIVE])
+        )
+        self.assertEqual(got, "handheld")
+
+    def test_cabled_but_inactive_external_does_not_block_docked(self):
+        """The mirror case: a second, unused monitor cabled up while AC and
+        the real external display are both active must not demote this to a
+        mixed state."""
+        got = classify_configuration(
+            inv(on_ac=True, displays=[INTERNAL, EXTERNAL, EXTERNAL_CABLED_BUT_INACTIVE])
+        )
         self.assertEqual(got, "docked")
 
 

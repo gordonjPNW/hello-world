@@ -338,8 +338,17 @@ def classify_configuration(inv: Inventory) -> str:
     of the targets, because silently filing a charging-handheld run under
     'handheld' is exactly the kind of quiet mislabelling that corrupts a data
     set months later.
+
+    "External present" means active (width > 0), not merely detected. Verified
+    on this device: after switching to the internal panel via Windows+P, the
+    Alienware monitor still turns up in WmiMonitorID -- it enumerates by EDID
+    over the still-connected cable regardless of whether Windows is routing
+    any output to it -- so an inactive-but-cabled monitor was being counted as
+    docked evidence and reading the run as 'undocked-external' when the actual
+    display, power source and everything else about the run was genuinely
+    handheld.
     """
-    external = [d for d in inv.displays if not d.internal]
+    external = [d for d in inv.displays if not d.internal and d.width > 0]
     if inv.on_ac and external:
         return "docked"
     if not inv.on_ac and not external:
