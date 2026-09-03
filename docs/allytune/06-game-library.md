@@ -193,8 +193,12 @@ in detail.
   number from any capture, even a well-passed one; the floor being tight says the rig is
   trustworthy, not that the machine had headroom. `/prep` also found ~1.4 GB in Alienware Command
   Center / Dell TechHub processes, running alongside Armoury Crate and previously unflagged.
-  **The handheld profile's noise floor is still not established at all** — everything measured so
-  far has been docked. That is the next one to run.
+  **The handheld profile's noise floor is attempted but not yet established.** Two tries on
+  2026-09-01, both NOT USABLE (29.92% and 83.84%), with a strong new candidate cause found by
+  Gordon watching the screen rather than by any capture: the device kept trying to sleep mid-test,
+  likely because a gamepad's input does not reset Windows' idle timer the way keyboard/mouse does.
+  Fix the sleep/screen timers on battery and start elevated (for real telemetry) before trying
+  again. Detail in `04-phase1-results.md`.
 - **`gpu_temp_c` is a proxy.** The Z1 Extreme exposes no GPU-die edge sensor; allytune matches
   `GPU VR SoC`, the voltage regulator.
 - **The 60 Hz ceiling is a dock limitation, not a monitor one.** The AW3225DM does 1440p at

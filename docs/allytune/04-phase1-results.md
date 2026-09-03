@@ -4,10 +4,13 @@ First session with the hardware present. Everything below was read off this Ally
 **2026-08-30**, not inferred. Where it contradicts an earlier document, the earlier document was
 written without device access and is wrong; the correction is noted and the source doc updated.
 
-**Status: PHASE 1'S ACCEPTANCE TEST IS PASSED. Noise floor 1.53% on the 1% low frametime, docked,
-under the 3% target.** Five attempts, spanning three sessions, to get here — see the table below.
-The rig itself is now trusted: what it says about a docked Uncharted 4 configuration can be
-believed to within about 1.5%.
+**Status: PASSED for docked, NOT YET for handheld.** Docked noise floor is 1.53% on the 1% low
+frametime, under the 3% target, after five attempts spanning three sessions — see the table below.
+Handheld was attempted for the first time on 2026-09-01: two tries, both NOT USABLE (29.92% and
+83.84%), with a strong new candidate cause found by observation rather than by a capture — the
+device kept trying to sleep mid-test. Full detail in [Handheld](#handheld) below. The two profiles
+are measured, and must be read, entirely separately — nothing about the docked pass says anything
+about handheld, and that is by design, not an oversight.
 
 **A second, separate finding rides along with the pass, and it deserves equal weight: the passing
 run did not deliver the performance the configuration was set up for.** Uncharted 4 was capped at
@@ -636,3 +639,154 @@ for all of those, kept general on purpose:
 Whatever it says, it goes in this document unedited. A rig that cannot resolve 5% makes every
 downstream conclusion worthless, and knowing that is far more valuable than a green tick — which is
 exactly why attempt 5's pass is reported alongside its RAM-pressure caveat rather than alone.
+
+---
+
+## Handheld
+
+**Status: not established. Two attempts on 2026-09-01, both NOT USABLE, with two different failure
+signatures.** A strong new candidate cause was found at the very end of the session — not from a
+capture, but from Gordon watching the screen: the device kept trying to sleep during testing. See
+[The likely cause](#the-likely-cause-sleep-and-idle-timers-on-battery) below. Fixing that is the
+first thing to try next session, before another blind capture.
+
+This is the first time this whole project has measured anything on battery. Everything above this
+line is docked; nothing about the docked floor transfers here — different power ceiling, different
+panel, different thermal behaviour, and now a confound that plugged-in testing never exposed at
+all, because sleep timers are the one thing AC power reliably prevents from ever mattering.
+
+### The setup
+
+Configuration switched from docked to handheld mid-session, and it took two corrections before the
+device actually read `handheld` cleanly. Both worth recording so a future session does not repeat
+the detour:
+
+1. **Unplugging power was not enough on its own.** With the charge cable pulled but the dock's
+   display connection still attached, the device read `undocked-external` — on battery, but the
+   Alienware monitor still active at full resolution. `allytune inventory` caught this correctly
+   rather than silently mislabelling the run.
+2. **Windows+P → "PC screen only" dropped the desktop to 1280×720**, not the panel's native
+   1920×1080. Windows chose a fallback resolution on the output switch rather than the panel's
+   preferred mode. Caught before any capture, corrected via Settings → Display → 1920×1080.
+
+Once both were fixed: `configuration: handheld`, `on_ac: False`, battery 100%, internal panel at
+`1920x1080 @ 120 Hz`. Clean starting state.
+
+The recipe from `06-game-library.md` was re-applied for the internal panel rather than assumed to
+carry over from docked: borderless windowed, resolution matching the desktop exactly (1920×1080,
+not the docked 2560×1440), V-Sync off. FSR and the frame cap were deliberately left off for the
+first probe, on the reasoning that battery introduces two new variables (a lower SPL ceiling and a
+120 Hz panel) that hadn't been characterised yet, and adding upscaling on top would have made a
+bad result impossible to attribute.
+
+The first 20-second probe was clean: 100% `Hardware Composed: Independent Flip`, 0% dropped, 34.1
+fps, GPU-busy 0.946. The display recipe transferred to the new panel with no extra work needed.
+
+RAM was tight going in — 0.59 GB free at the first probe. `allytune dashboard`'s `/prep` page was
+used directly (not through the browser, called from the same session) and recovered some of it:
+0.93 → 1.29 GB. Most of the Alienware/Dell stack still needed an elevated session to close fully,
+consistent with what was already known from the docked testing. Proceeded anyway rather than lose
+battery time restarting elevated — the same trade the project made once already on attempt 5.
+
+### Result — first attempt, 2026-09-01 (handheld): 29.92%
+
+```
+run 1: 1% low 45.50 ms, stdev 3.75 ms, avg 32.0 fps, mixed
+       Hardware Composed: Independent Flip 100%, 0.0% dropped
+run 2: 1% low 43.16 ms, stdev 5.07 ms, avg 32.6 fps, mixed
+       Hardware Composed: Independent Flip 93%, 0.3% dropped   ** SUSPECT
+run 3: 1% low 47.83 ms, stdev 4.44 ms, avg 29.7 fps, mixed
+       Hardware Composed: Independent Flip 93%, 0.3% dropped   ** SUSPECT
+
+Headline: 29.92%  (frametime stdev)      Verdict: NOT USABLE
+```
+
+Run 1 was clean. Runs 2 and 3 both broke to the *identical* degree — 93% flip, 0.3% dropped, not a
+progressive decay. That precision looked systematic rather than random: something specific
+happening once, between run 1 and run 2, and then staying in that state.
+
+Checked immediately afterward: present mode had already returned to 100% independent flip, 0%
+dropped on its own, with RAM up to 2.87 GB free. Whatever caused it was transient, not a stuck
+setting — ruling out anything that would show as a persistent process or configuration change.
+
+### Result — second attempt, 2026-09-01 (handheld): 83.84%
+
+Same configuration, run immediately after the first attempt while conditions looked clean.
+
+```
+run 1: 1% low 41.81 ms, stdev 4.25 ms, avg 30.4 fps, mixed
+       Hardware Composed: Independent Flip 100%, 0.0% dropped
+run 2: 1% low 35.61 ms, stdev 3.02 ms, avg 34.3 fps, mixed
+       Hardware Composed: Independent Flip 100%, 0.0% dropped
+run 3: 1% low 50.81 ms, stdev 7.00 ms, avg 34.3 fps, GPU-bound
+       Hardware Composed: Independent Flip 97%, 0.7% dropped   ** SUSPECT
+       0.1% low frametime: 125.18 ms -- a genuine hitch, not just elevated variance
+
+Headline: 83.84%  (frametime stdev)      Verdict: NOT USABLE
+```
+
+This is worse than attempt 1, and — importantly — **the failure does not repeat the same shape**.
+Only run 3 broke this time, not runs 2 and 3. The severity differs (97%/0.7% vs 93%/0.3%). The
+classification on the broken run differs (GPU-bound vs mixed). This happened despite RAM being
+*better* going in (2.54 GB vs 1.23 GB), which weakens RAM pressure as the primary explanation for
+either attempt. A fixed periodic cause firing on a strict schedule would be expected to break the
+same run both times; it did not.
+
+Worth noting separately: even the four runs that read "clean" across both attempts carry stdev of
+3–7 ms — well above the sub-1 ms seen on a genuinely good docked run (attempt 3, attempt 5's
+individual runs). Something is adding baseline noise here beyond the outright breaks.
+
+### The likely cause: sleep and idle timers on battery
+
+Found by Gordon watching the screen, not by anything in a capture: **the device kept trying to go
+to sleep during testing.** This was never possible to see docked, because every docked session was
+on AC power, and Windows' sleep timers either do not apply on AC or are set far more generously
+there by default. This is the first handheld session, so it is also the first session in which this
+could have ever shown up.
+
+It is a strong candidate for explaining most of what both attempts show, for a specific, well-known
+reason: **Windows measures user activity by keyboard and mouse input by default, and controller
+input often does not reset that idle timer at all.** Uncharted 4 is a PS4/PS5 port played with a
+gamepad. If the OS was moving toward a sleep or display-off transition mid-capture — throttling in
+preparation, or a brief resume-from-attempted-sleep — that would plausibly produce exactly this
+signature: a temporary drop out of independent flip that self-resolves, timing that is not fixed
+run-to-run (since it depends on exactly when the idle timer last got reset relative to the capture
+window), and elevated pacing noise even in runs that never fully broke.
+
+This is a hypothesis, not a confirmed finding — there is no telemetry yet linking a specific sleep
+event to a specific broken run. It is the leading one because it is the only candidate that explains
+both the transient self-healing behaviour *and* the non-repeating failure shape between the two
+attempts, and because it is grounded in something actually observed rather than inferred from the
+frame data alone.
+
+### A qualitative note, recorded honestly
+
+Gordon's assessment after both attempts: **the game played really well with the current settings.**
+Worth recording precisely, because it is not a contradiction of two failed noise floors — it is
+exactly the gap this project exists to close. A session can feel good in the moment while still
+carrying enough measurement variance that no specific number can be trusted yet. The settings
+themselves — borderless 1920×1080 matching the panel, FSR off, uncapped — are a promising starting
+point once the rig can certify them, which is precisely why establishing the floor still matters
+even though the play felt fine.
+
+### Battery cost of testing
+
+100% → 78% across roughly 25 minutes: two full 8-minute noise-floor attempts, the RAM cleanup, and
+several diagnostic probes. Worth budgeting for when planning how much a handheld session can cover
+in one sitting — this project's docked testing never had to account for battery drain as a
+constraint on the testing itself.
+
+### Next steps, in order
+
+1. **Fix the sleep/idle timer before anything else.** Prime suspect for both failures.
+   `Settings → System → Power & Battery → Screen and sleep`, and raise the "On battery power" screen
+   and sleep timers well past capture length — or confirm whether something needs to actively hold
+   the system awake for a controller-driven session. Untried this session; the natural first thing
+   to check next.
+2. **Start elevated next time** (`.\tune` from an Administrator terminal) so LibreHardwareMonitor
+   can run. Real power, clock and thermal data during a break would turn "which hypothesis is
+   right" into a direct read rather than inference from frame data alone — and would let `/prep`
+   close the remaining ~800 MB of Alienware/Dell processes that stayed protected behind
+   Administrator both times today.
+3. Re-run the handheld noise floor with both of those in place before trying anything else on this
+   profile — the floor has to exist before any handheld result built on top of it can be trusted.

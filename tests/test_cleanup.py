@@ -126,6 +126,11 @@ class TestSafetyInvariant(unittest.TestCase):
         cleanup(
             ["browsers"], live={"msedge": 50.0},
             executor=lambda args: seen.append(args) or (0, ""),  # succeeds first try
+            live_mid={},    # genuinely gone -- must inject this or cleanup() falls
+                            # through to a REAL process query, which found the real
+                            # msedge.exe still running on this machine (the fake
+                            # executor never actually closes anything) and correctly
+                            # escalated -- a real bug in this test, not in cleanup()
             live_after={},
             free_before_gb=6.0, free_after_gb=6.0,
         )
