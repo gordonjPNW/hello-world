@@ -291,6 +291,22 @@ uncapped to test the ceiling itself.
 Silicon lottery moves the efficiency sweet spot a watt or two either way, so treat every
 number above as a validated starting point rather than a final answer.
 
+## Corrections from the first on-device session (2026-08-30)
+
+The first session with the hardware present. Full detail in
+[docs/allytune/04-phase1-results.md](docs/allytune/04-phase1-results.md).
+
+- **Battery health confirmed** at 66 288 of 80 000 mWh = 82.9%, matching the ~83% recorded below.
+- **Internal panel confirmed** still at 1920x1080 @ 120 Hz, model `TMX TL070FVXS01-0`.
+- **RAM is 24 GB installed but 15.7 GB visible** -- 8 GB is carved out as dedicated VRAM. The
+  documents elsewhere say "24 GB RAM" without qualification, which overstates what a game has to
+  work with by half again.
+- **Uncharted 4 has no plaintext settings file.** Its graphics configuration lives inside Naughty
+  Dog's binary save format, so the planned unattended settings sweep cannot patch a text file for
+  this title. This is a real cost to the phase 2 estimate.
+- **PresentMon does not require elevation** to capture, contrary to `CLAUDE.md`.
+  LibreHardwareMonitor does -- it will not launch at all without it.
+
 ## Context from this session
 
 - Battery health measured at roughly **83%** (66.5 Wh full-charge vs 80 Wh nominal), so
