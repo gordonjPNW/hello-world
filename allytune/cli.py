@@ -402,6 +402,19 @@ def cmd_games(args) -> int:
     return 0
 
 
+def cmd_steam_watch(args) -> int:
+    """Watch for Steam games launching and close Steam's window once each does."""
+    from allytune.system import steam_watcher
+    try:
+        steam_watcher.watch(
+            poll_interval=args.poll_interval, close_delay=args.close_delay,
+        )
+    except KeyboardInterrupt:
+        print("")
+        print("stopped")
+    return 0
+
+
 def cmd_doctor(args) -> int:
     checks = []
 
@@ -524,6 +537,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--verbose", action="store_true", help="show paths and notes")
     sp.add_argument("--game", default=None, help="show just one title")
     sp.set_defaults(func=cmd_games)
+
+    sp = sub.add_parser("steam-watch",
+                        help="close Steam's window automatically once a game launches")
+    sp.add_argument("--poll-interval", type=float, default=2.0,
+                    help="seconds between process checks (default 2)")
+    sp.add_argument("--close-delay", type=float, default=3.0,
+                    help="seconds to wait after detecting a game before "
+                         "closing Steam's window (default 3)")
+    sp.set_defaults(func=cmd_steam_watch)
 
     sp = sub.add_parser("doctor", help="check the installation")
     common(sp)
