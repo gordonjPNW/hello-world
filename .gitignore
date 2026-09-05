@@ -1,0 +1,12 @@
+# PresentMon captures: large, machine-specific, regenerated every run.
+# The derived statistics live in ~/.allytune/runs.jsonl and in the docs.
+captures/
+*.csv
+
+# Downloaded tools are pinned by version and hash in the bootstrap script
+# rather than committed -- PresentMon is ~1 MB of binary per version.
+tools/
+
+__pycache__/
+*.py[cod]
+.venv/
