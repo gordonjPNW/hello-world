@@ -12,6 +12,7 @@ import unittest
 from allytune.system.steam_watcher import (
     EXCLUDE_BASENAMES,
     STEAM_COMMON,
+    VERIFY_DELAY_S,
     close_steam_window,
     find_new_game_processes,
     handle_new_games,
@@ -97,6 +98,7 @@ class TestHandleNewGames(unittest.TestCase):
             before={}, after={100: ("u4.exe", U4)}, handled_pids=frozenset(),
             executor=lambda args: calls.append(args) or (0, ""),
             sleep_fn=lambda s: None, close_delay=3.0, print_fn=lambda *a: None,
+            window_check_fn=lambda: False,
         )
         self.assertEqual(len(calls), 1)
         self.assertEqual(handled, frozenset({100}))
@@ -120,9 +122,11 @@ class TestHandleNewGames(unittest.TestCase):
             before={}, after={100: ("u4.exe", U4)}, handled_pids=frozenset(),
             executor=lambda args: (0, ""),
             sleep_fn=lambda s: slept.append(s), close_delay=3.0,
-            print_fn=lambda *a: None,
+            print_fn=lambda *a: None, window_check_fn=lambda: False,
         )
-        self.assertEqual(slept, [3.0])
+        # 3.0 is the pre-close pause under test here; VERIFY_DELAY_S is the
+        # separate post-close verification wait, unconditional on success.
+        self.assertEqual(slept, [3.0, VERIFY_DELAY_S])
 
     def test_zero_delay_skips_the_pause(self):
         slept = []
@@ -130,9 +134,11 @@ class TestHandleNewGames(unittest.TestCase):
             before={}, after={100: ("u4.exe", U4)}, handled_pids=frozenset(),
             executor=lambda args: (0, ""),
             sleep_fn=lambda s: slept.append(s), close_delay=0,
-            print_fn=lambda *a: None,
+            print_fn=lambda *a: None, window_check_fn=lambda: False,
         )
-        self.assertEqual(slept, [])
+        # The pre-close pause is skipped; the post-close verification wait
+        # still happens -- it is independent of close_delay.
+        self.assertEqual(slept, [VERIFY_DELAY_S])
 
     def test_two_different_games_launching_together_both_get_closed_once(self):
         calls = []
@@ -141,6 +147,7 @@ class TestHandleNewGames(unittest.TestCase):
             handled_pids=frozenset(),
             executor=lambda args: calls.append(args) or (0, ""),
             sleep_fn=lambda s: None, print_fn=lambda *a: None,
+            window_check_fn=lambda: False,
         )
         self.assertEqual(len(calls), 2)
         self.assertEqual(handled, frozenset({100, 200}))
@@ -154,6 +161,62 @@ class TestHandleNewGames(unittest.TestCase):
             sleep_fn=lambda s: None, print_fn=lambda *a: None,
         )
         self.assertEqual(calls, [])
+
+
+class TestHandleNewGamesVerifiesTheWindowActuallyClosed(unittest.TestCase):
+    """Regression tests for a bug caught live, 2026-09-05: a graceful taskkill
+    exiting 0 does not mean Steam's window actually closed. It was reported as
+    "done" while the window stayed open the whole session -- the same shape
+    of false-success bug already found twice in allytune.system.cleanup."""
+
+    def test_success_message_only_prints_once_the_window_is_confirmed_gone(self):
+        messages = []
+        handle_new_games(
+            before={}, after={100: ("u4.exe", U4)}, handled_pids=frozenset(),
+            executor=lambda args: (0, ""),
+            sleep_fn=lambda s: None, close_delay=0,
+            print_fn=lambda *a: messages.append(" ".join(a)),
+            window_check_fn=lambda: False,
+        )
+        self.assertTrue(any("done" in m for m in messages))
+        self.assertFalse(any("still open" in m for m in messages))
+
+    def test_still_open_message_prints_when_taskkill_succeeded_but_window_remains(self):
+        """The exact bug as reported: taskkill exits 0, the window never
+        actually goes away."""
+        messages = []
+        handle_new_games(
+            before={}, after={100: ("u4.exe", U4)}, handled_pids=frozenset(),
+            executor=lambda args: (0, ""),
+            sleep_fn=lambda s: None, close_delay=0,
+            print_fn=lambda *a: messages.append(" ".join(a)),
+            window_check_fn=lambda: True,
+        )
+        self.assertTrue(any("still open" in m for m in messages))
+        self.assertFalse(any("done" in m for m in messages))
+
+    def test_window_is_not_checked_when_taskkill_itself_failed(self):
+        """No point verifying a close that was never even accepted -- and the
+        existing failure message already covers that case."""
+        checked = []
+        handle_new_games(
+            before={}, after={100: ("u4.exe", U4)}, handled_pids=frozenset(),
+            executor=lambda args: (1, "Access is denied."),
+            sleep_fn=lambda s: None, close_delay=0,
+            print_fn=lambda *a: None,
+            window_check_fn=lambda: checked.append(True) or False,
+        )
+        self.assertEqual(checked, [])
+
+    def test_verification_wait_happens_after_a_successful_taskkill(self):
+        slept = []
+        handle_new_games(
+            before={}, after={100: ("u4.exe", U4)}, handled_pids=frozenset(),
+            executor=lambda args: (0, ""),
+            sleep_fn=lambda s: slept.append(s), close_delay=0,
+            print_fn=lambda *a: None, window_check_fn=lambda: False,
+        )
+        self.assertIn(VERIFY_DELAY_S, slept)
 
 
 if __name__ == "__main__":

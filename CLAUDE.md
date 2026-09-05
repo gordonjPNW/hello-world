@@ -160,6 +160,24 @@ as a RAM consumer before. It is the single largest reclaimable category.
    Windows Search's own embedded content, not a browser tab) were both tried and dropped after
    being directly measured to backfire. Neither is a closeable target.
 
+### Steam auto-close
+
+`allytune steam-watch` (also reachable from a desktop shortcut, `steam-watch.cmd`) polls for a
+newly-launched Steam game and sends `steam.exe` a graceful, non-forced `taskkill`. That mirrors
+what Steam's own X button already does on this machine — verified 2026-09-02: it minimizes to
+tray rather than quitting, so the running game's `SteamAPI_Init()` handle is never put at risk.
+Logic lives in `allytune/system/steam_watcher.py`.
+
+**A fourth real bug, same shape as the three above, found by playing a game with it running:** a
+graceful `taskkill` exiting 0 does not mean Steam's window actually closed. Live test, 2026-09-05:
+it printed "done" while Steam's window stayed open for the whole session, and had to be closed by
+hand. Fixed the same way as the `cleanup.py` bugs — never trust the exit code alone.
+`handle_new_games()` now waits `VERIFY_DELAY_S` (2s) after a successful taskkill and re-checks
+Steam's actual window state (`MainWindowTitle`, empty once minimized to tray) before printing
+"done"; if the window is still open it says so honestly instead of claiming success. Nothing is
+retried automatically either way, consistent with the existing "closed once per detected game,
+never hammered" rule.
+
 ### The principle behind all of it
 
 Miles Morales tuned well because 10 W → 17 W was a **148%** difference — visible by eye, immune to

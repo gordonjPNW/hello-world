@@ -62,6 +62,16 @@ PS_SNAPSHOT_QUERY = (
     "Select-Object ProcessId,Name,ExecutablePath"
 )
 
+STEAM_WINDOW_QUERY = (
+    "Get-Process -Name steam -ErrorAction SilentlyContinue | "
+    "Select-Object -First 1 MainWindowTitle"
+)
+
+# How long to wait after a graceful taskkill before checking whether Steam's
+# window actually went away. Not a science -- long enough for Steam to repaint
+# after WM_CLOSE, short enough not to stall the poll loop.
+VERIFY_DELAY_S = 2.0
+
 
 @dataclass(frozen=True)
 class DetectedGame:
@@ -140,6 +150,22 @@ def _live_process_snapshot() -> dict:
     return out
 
 
+def _steam_window_is_open() -> bool:
+    """Whether steam.exe currently has a visible top-level window.
+
+    `MainWindowTitle` reads empty once the window is hidden/minimized to
+    tray, and also if steam.exe is not running at all -- both cases mean
+    "nothing to close," which is the right answer either way. Checked by
+    title rather than `MainWindowHandle` because Windows PowerShell 5.1
+    serialises the handle (an IntPtr) inconsistently to JSON; a plain string
+    round-trips cleanly.
+    """
+    rows = wb.as_list(wb.ps_json(STEAM_WINDOW_QUERY))
+    if not rows:
+        return False
+    return bool((rows[0].get("MainWindowTitle") or "").strip())
+
+
 def handle_new_games(
     before: dict,
     after: dict,
@@ -148,6 +174,7 @@ def handle_new_games(
     sleep_fn=None,
     close_delay: float = 3.0,
     print_fn=print,
+    window_check_fn=None,
 ) -> frozenset:
     """One polling step: detect newly-launched games, close Steam's window
     once per each. Returns the updated handled-pids set.
@@ -161,8 +188,17 @@ def handle_new_games(
     hammering taskkill repeatedly while a game keeps running is more likely to
     do something unexpected than to help, and there is nothing to gain from a
     second attempt once the first WM_CLOSE has been sent.
+
+    A graceful `taskkill` exiting 0 means the signal was delivered, not that
+    Steam acted on it -- verified live, 2026-09-05: it reported success while
+    Steam's window stayed open the whole time (`allytune.system.cleanup` hit
+    this same shape of bug, twice). So a zero exit code is now followed by one
+    check of Steam's actual window state before either message prints.
+    Nothing is retried either way, for the same "do not hammer it" reason as
+    above -- an honest "still open" beats a false "done".
     """
     sleep = sleep_fn or time.sleep
+    check_window = window_check_fn or _steam_window_is_open
     new_games = [g for g in find_new_game_processes(before, after)
                  if g.pid not in handled_pids]
     updated = set(handled_pids)
@@ -173,10 +209,15 @@ def handle_new_games(
             sleep(close_delay)
         rc, err = close_steam_window(executor)
         updated.add(g.pid)
-        if rc == 0:
-            print_fn("  done -- Steam minimized to tray, still running.")
-        else:
+        if rc != 0:
             print_fn("  taskkill reported: " + (err or "").strip())
+            continue
+        sleep(VERIFY_DELAY_S)
+        if check_window():
+            print_fn("  taskkill was sent, but Steam's window is still open --")
+            print_fn("  close it yourself if it's in the way.")
+        else:
+            print_fn("  done -- Steam minimized to tray, still running.")
     return frozenset(updated)
 
 
@@ -187,6 +228,7 @@ def watch(
     executor=None,
     sleep_fn=None,
     print_fn=print,
+    window_check_fn=None,
 ) -> None:
     """Poll forever, closing Steam's window once per newly-launched game.
 
@@ -210,6 +252,7 @@ def watch(
         sleep(poll_interval)
         after = snap()
         handled = handle_new_games(
-            before, after, handled, executor, sleep_fn, close_delay, print_fn
+            before, after, handled, executor, sleep_fn, close_delay, print_fn,
+            window_check_fn,
         )
         before = after
