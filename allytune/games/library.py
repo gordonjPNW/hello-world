@@ -88,14 +88,29 @@ GAMES = [
         name="Ghost of Tsushima: Director's Cut",
         appid=2215430,
         exe=r"Ghost of Tsushima DIRECTOR'S CUT\GhostOfTsushima.exe",
-        settings=BINARY_SAVE,
+        settings=UNKNOWN_FORMAT,
         benchmark="likely",
         bound="unmeasured",
         notes=(
-            "Same class of PlayStation port as Uncharted 4 -- expect the same "
-            "borderless/FSR2 display recipe to apply cleanly. Widely reported as "
-            "one of the better-optimised ports, so it may reach 30 fps at higher "
-            "settings than Uncharted managed."
+            "Nixxes PC port -- not Naughty Dog's engine, so the Uncharted 4 "
+            "settings lineage does not carry here. Verified on-device "
+            "2026-09-06: installed (56 GB, build 23879181) but NEVER LAUNCHED "
+            "on this Ally -- appmanifest LastPlayed 0, no graphics config "
+            "anywhere in the profile or registry, and cache_pc holds only "
+            "shipped assets with no compiled shaders. The .sav files in the "
+            "game's Documents folder are Steam Cloud copies from another PC "
+            "(Oct 2024), not evidence it ran here. settings stays "
+            "UNKNOWN_FORMAT until a first launch shows where the graphics "
+            "config lives and whether it is patchable -- the same footing "
+            "Days Gone was on before its first launch. Benchmark 'likely' but "
+            "unconfirmed; check the Display menu on the first run. Upscaler "
+            "lever is FSR (amd_fidelityfx_dx12.dll, plus XeSS, in the install; "
+            "the DLSS DLLs are inert on the Z1). SwapEffectUpgradeEnable is "
+            "already set for the exe, and the PlayStation PC SDK runtime is "
+            "already installed, so the first launch is shader compilation "
+            "only -- no installer prompt. Well-regarded port, so it may hold "
+            "30 fps docked at higher settings than Uncharted 4 managed -- a "
+            "hypothesis, not a finding."
         ),
     ),
     Game(
