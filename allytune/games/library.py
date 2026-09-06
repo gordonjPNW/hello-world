@@ -129,16 +129,22 @@ GAMES = [
         name="Days Gone",
         appid=1259420,
         exe=r"Days Gone\BendGame\Binaries\Win64\DaysGone.exe",
-        settings=UNKNOWN_FORMAT,
+        settings=PATCHABLE_INI,
+        settings_path=r"AppData\Local\BendGame\Saved\Config\WindowsNoEditor\GameUserSettings.ini",
         benchmark="no",
         bound="unmeasured",
         notes=(
-            "Unreal Engine 4, but no GameUserSettings.ini was found anywhere in "
-            "the profile -- either it has never been launched, or it stores "
-            "settings elsewhere. Re-check after first launch; if a "
-            "GameUserSettings.ini appears it becomes patchable. Horde sequences "
-            "are heavily CPU-bound, so this may behave like Miles Morales rather "
-            "than like Uncharted."
+            "Unreal Engine 4. GameUserSettings.ini appeared after first launch "
+            "(2026-09-06) -- plain INI, patchable. The live quality keys are "
+            "Days Gone's own (LightingQuality, ShadowQuality, CloudAndFogQuality, "
+            "GeometryQuality, FoliageDrawDistance, TextureFilterQuality, "
+            "RenderScale), which VisualPreset=4 (custom) overrides the sg.* "
+            "groups with. No FSR/DLSS -- RenderScale is the only upscaler lever. "
+            "No benchmark. Horde sequences are heavily CPU-bound, so this may "
+            "behave like Miles Morales rather than like Uncharted -- confirm "
+            "with the GPU-busy ratio before touching resolution or RenderScale. "
+            "Recipe applied 2026-09-06: borderless 2560x1440, V-Sync off, "
+            "30 fps cap; measurement still outstanding."
         ),
     ),
     Game(
