@@ -91,8 +91,7 @@ GAMES = [
         exe=r"Ghost of Tsushima DIRECTOR'S CUT\GhostOfTsushima.exe",
         settings=PATCHABLE_REGISTRY,
         benchmark="no",
-        bound="GPU-bound",
-        measured=True,
+        bound="unmeasured",
         notes=(
             "Nixxes PC port. Graphics settings live in the REGISTRY, not a "
             r"file: HKCU\Software\Sucker Punch Productions\Ghost of Tsushima "
@@ -100,28 +99,31 @@ GAMES = [
             "scale 0=Low 1=Med 2=High 3=VeryHigh (TextureQuality, "
             "ShadowQuality, LevelOfDetail, VolumetricFogQuality, "
             "ScreenSpaceReflections, ...); UpscaleMethod 2=FSR 3.1.4, "
-            "UpscaleQuality 3=Quality; Fullscreen / ExclusiveFullscreen / "
-            "VSync / FrameGen are 0/1 flags; FullscreenWidth/Height in px. "
-            "Fully scriptable for a sweep, no file parsing -- but the game "
-            "rewrites the whole key on exit, so patch only while it is "
-            "closed. "
-            "MEASURED 2026-09-06, docked 1440p, first probe (grass-field "
-            "vista, 1176 frames): 100% Hardware Independent Flip, 0 dropped "
-            "-- the borderless display recipe transferred cleanly on the "
-            "first try (plain 'Fullscreen' + 2560x1440 matching the desktop "
-            "+ VSync off + the pre-set SwapEffectUpgradeEnable). GPU-busy "
-            "ratio 0.965 => GPU-bound, same as Uncharted 4. At the auto "
-            "'High' preset + FSR Quality it holds only ~27 fps (mean "
-            "GPU-busy 36.8 ms), so a locked 30 needs a settings and/or "
-            "FSR-level cut: the sweep is still outstanding. That probe ran "
-            "with 0.5 GB RAM free yet showed NO streaming-hitch signature "
-            "(tight frametimes, nothing over 100 ms) -- unlike Uncharted 4, "
-            "which suggests GoT leans on the 8 GB VRAM carve-out; re-confirm "
-            "under proper headroom before trusting an absolute fps. No "
-            "benchmark in the Display menu on build v1053.9.0623.1807. "
-            "Window mode: use plain 'Fullscreen' (borderless) -- 'Exclusive "
-            "Fullscreen' crashed the game doing a 1440p mode-switch through "
-            "the dock."
+            "UpscaleQuality 3=Quality 2=Balanced; Fullscreen / "
+            "ExclusiveFullscreen / VSync / FrameGen are 0/1 flags; "
+            "FullscreenWidth/Height in px. Fully scriptable for a sweep, no "
+            "file parsing -- but the game rewrites the whole key on exit, so "
+            "patch only while it is closed. "
+            "DISPLAY PATH IS SOLVED (2026-09-06, docked 1440p, two probes): "
+            "100% Hardware Independent Flip, 0 dropped presents -- the "
+            "borderless recipe transferred cleanly on the first try (plain "
+            "'Fullscreen' + 2560x1440 matching the desktop + VSync off + the "
+            "pre-set SwapEffectUpgradeEnable). "
+            "BOTTLENECK NOT YET RESOLVED. At High preset: FSR Quality ~26 fps "
+            "avg, FSR Balanced ~30 fps avg. Probe 1's GPU-busy ratio (0.965) "
+            "read as GPU-bound but was misleading -- CPUBusy (37.5 ms) about "
+            "equalled GPUBusy (36.8 ms), i.e. co-limited. At Balanced the GPU "
+            "eased (29 ms) but CPUBusy (31 ms) did not, and the CPU was the "
+            "longer path on 67% of frames -- so this behaves more like Miles "
+            "Morales than Uncharted 4, and dropping FSR below Balanced will "
+            "do little. BUT both probes ran at 0.5-1.0 GB RAM free, which "
+            "inflates CPU frame time, so the CPU-vs-GPU call is not "
+            "trustworthy yet. Next: a clean-RAM, elevated run to settle the "
+            "bound, then sweep CPU-side settings (LevelOfDetail, TerrainDetail, "
+            "foliage/crowd, shadow distance) for a locked 30 -- not resolution. "
+            "No benchmark in the Display menu on build v1053.9.0623.1807. "
+            "Use plain 'Fullscreen' (borderless); 'Exclusive Fullscreen' "
+            "crashed the game doing a 1440p mode-switch through the dock."
         ),
     ),
     Game(
