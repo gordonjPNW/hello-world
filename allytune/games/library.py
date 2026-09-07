@@ -29,6 +29,7 @@ HOME = Path(os.path.expanduser("~"))
 # settings sweep is possible at all.
 PATCHABLE_XML = "plaintext-xml"      # fully scriptable
 PATCHABLE_INI = "plaintext-ini"      # fully scriptable
+PATCHABLE_REGISTRY = "registry"      # fully scriptable -- named values under HKCU
 BINARY_SAVE = "binary-save"          # menu only; no text to patch
 UNKNOWN_FORMAT = "unknown"
 
@@ -88,29 +89,39 @@ GAMES = [
         name="Ghost of Tsushima: Director's Cut",
         appid=2215430,
         exe=r"Ghost of Tsushima DIRECTOR'S CUT\GhostOfTsushima.exe",
-        settings=UNKNOWN_FORMAT,
-        benchmark="likely",
-        bound="unmeasured",
+        settings=PATCHABLE_REGISTRY,
+        benchmark="no",
+        bound="GPU-bound",
+        measured=True,
         notes=(
-            "Nixxes PC port -- not Naughty Dog's engine, so the Uncharted 4 "
-            "settings lineage does not carry here. Verified on-device "
-            "2026-09-06: installed (56 GB, build 23879181) but NEVER LAUNCHED "
-            "on this Ally -- appmanifest LastPlayed 0, no graphics config "
-            "anywhere in the profile or registry, and cache_pc holds only "
-            "shipped assets with no compiled shaders. The .sav files in the "
-            "game's Documents folder are Steam Cloud copies from another PC "
-            "(Oct 2024), not evidence it ran here. settings stays "
-            "UNKNOWN_FORMAT until a first launch shows where the graphics "
-            "config lives and whether it is patchable -- the same footing "
-            "Days Gone was on before its first launch. Benchmark 'likely' but "
-            "unconfirmed; check the Display menu on the first run. Upscaler "
-            "lever is FSR (amd_fidelityfx_dx12.dll, plus XeSS, in the install; "
-            "the DLSS DLLs are inert on the Z1). SwapEffectUpgradeEnable is "
-            "already set for the exe, and the PlayStation PC SDK runtime is "
-            "already installed, so the first launch is shader compilation "
-            "only -- no installer prompt. Well-regarded port, so it may hold "
-            "30 fps docked at higher settings than Uncharted 4 managed -- a "
-            "hypothesis, not a finding."
+            "Nixxes PC port. Graphics settings live in the REGISTRY, not a "
+            r"file: HKCU\Software\Sucker Punch Productions\Ghost of Tsushima "
+            r"DIRECTOR'S CUT\Graphics -- every knob a named DWORD. Quality "
+            "scale 0=Low 1=Med 2=High 3=VeryHigh (TextureQuality, "
+            "ShadowQuality, LevelOfDetail, VolumetricFogQuality, "
+            "ScreenSpaceReflections, ...); UpscaleMethod 2=FSR 3.1.4, "
+            "UpscaleQuality 3=Quality; Fullscreen / ExclusiveFullscreen / "
+            "VSync / FrameGen are 0/1 flags; FullscreenWidth/Height in px. "
+            "Fully scriptable for a sweep, no file parsing -- but the game "
+            "rewrites the whole key on exit, so patch only while it is "
+            "closed. "
+            "MEASURED 2026-09-06, docked 1440p, first probe (grass-field "
+            "vista, 1176 frames): 100% Hardware Independent Flip, 0 dropped "
+            "-- the borderless display recipe transferred cleanly on the "
+            "first try (plain 'Fullscreen' + 2560x1440 matching the desktop "
+            "+ VSync off + the pre-set SwapEffectUpgradeEnable). GPU-busy "
+            "ratio 0.965 => GPU-bound, same as Uncharted 4. At the auto "
+            "'High' preset + FSR Quality it holds only ~27 fps (mean "
+            "GPU-busy 36.8 ms), so a locked 30 needs a settings and/or "
+            "FSR-level cut: the sweep is still outstanding. That probe ran "
+            "with 0.5 GB RAM free yet showed NO streaming-hitch signature "
+            "(tight frametimes, nothing over 100 ms) -- unlike Uncharted 4, "
+            "which suggests GoT leans on the 8 GB VRAM carve-out; re-confirm "
+            "under proper headroom before trusting an absolute fps. No "
+            "benchmark in the Display menu on build v1053.9.0623.1807. "
+            "Window mode: use plain 'Fullscreen' (borderless) -- 'Exclusive "
+            "Fullscreen' crashed the game doing a 1440p mode-switch through "
+            "the dock."
         ),
     ),
     Game(

@@ -29,7 +29,8 @@ class TestCatalogIntegrity(unittest.TestCase):
 
     def test_settings_format_is_a_known_constant(self):
         allowed = {library.PATCHABLE_XML, library.PATCHABLE_INI,
-                   library.BINARY_SAVE, library.UNKNOWN_FORMAT}
+                   library.PATCHABLE_REGISTRY, library.BINARY_SAVE,
+                   library.UNKNOWN_FORMAT}
         for g in library.GAMES:
             self.assertIn(g.settings, allowed, g.name)
 
