@@ -1,0 +1,11 @@
+{
+  "name": "wallpapers",
+  "private": true,
+  "description": "Phone backgrounds matching the Pixel Watch dial set",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}
