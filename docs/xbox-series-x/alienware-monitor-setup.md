@@ -294,7 +294,7 @@ and otherwise ignore this topic entirely.
 - [x] VRR confirmed available (monitor advertises it, Xbox offers it)
 - [x] ALLM understood as unavailable and not worth chasing
 - [x] Dolby Vision left off
-- [ ] `Allow 4K` unticked, and a game re-checked in Display Info for 1440p at 120 Hz
+- [x] `Allow 4K` unticked, and a game re-checked in Display Info: **1440p at 120 Hz, 24-BIT (RGB), confirmed in-game**
 - [ ] VRR confirmed end-to-end via `STREAM INFO` under a running game
 - [ ] VRR set to `Gaming only` and flicker assessed
 - [ ] Monitor preset, response time and sharpness corrected
@@ -304,3 +304,26 @@ and otherwise ignore this topic entirely.
 
 The unchecked items are live work, not omissions — they need judgement calls made in front of the
 panel rather than values that can be looked up.
+
+---
+
+## You are here
+
+**The two settings that mattered are done.** Output is 1440p / 120 Hz / RGB, verified inside a
+running game rather than on the dashboard. Everything below is refinement, and the display is in a
+good state without it.
+
+Pick these up in any order, independently:
+
+1. **Monitor preset** — `PRESET MODES: MOBA/RTS` → **Standard**. Single biggest remaining image
+   win, and it takes ten seconds. `RESPONSE TIME: SUPER FAST` → **Fast** and `SHARPNESS: 30` →
+   **50** are the same menu trip.
+2. **HDR decision** — §5. Enable `Allow HDR10`, compare against SDR by eye, decide. Expect SDR to be
+   competitive on a DisplayHDR 400 VA panel.
+3. **Chroma follow-up** — if HDR ends up off, untick `Allow YCC 4:2:2`. It is only a bandwidth valve
+   for HDR.
+4. **VRR confirmation** — `STREAM INFO` in Display Info under a running game. Read `-` when last
+   checked, which is inconclusive rather than a failure; VRR is advertised by the monitor and
+   offered by the console.
+5. **Audio** — §7. Nothing comes out of this monitor by design. Controller headset is the zero-effort
+   answer.
