@@ -156,7 +156,7 @@ was the single biggest source of confusion during setup.
 
 | | Handheld | Docked |
 |---|---|---|
-| Display | Internal panel, 1920×1080, 7" | Alienware 32" curved, 3840×2160 |
+| Display | Internal panel, 1920×1080, 7" | Alienware AW3225DM, 31.5" curved VA, **2560×1440** native |
 | Refresh | **120 Hz** (confirmed) | 59/60 Hz only — set **60**, not 59 |
 | Game resolution | 1080p native + FSR | **1080p** (integer-scales to 4K) |
 | Frame cap | **40 fps** | **30 or 60** until VRR is working |
@@ -186,7 +186,9 @@ visually on a small screen.
 
 ### Docked: run games at 1080p
 
-**The desktop was found at 3840×2160.** At 30 W a Z1 Extreme is not a 4K device, and games
+**The desktop was found at 3840×2160** — a mode the panel does not actually have; see the
+correction under [The monitor and the dock](#the-monitor-and-the-dock). At 30 W a Z1 Extreme is
+not a 4K device either way, and games
 default to the desktop resolution — Spider-Man at native 4K would be unplayable no matter
 how well the TDP profile is tuned. 4K is 4× the pixels of 1080p on a handheld APU, so this
 matters more than every wattage decision in this document combined.
@@ -197,9 +199,22 @@ interpolation softness**. 1440p into 4K is non-integer and looks mushier by comp
 
 ### The monitor and the dock
 
-Display is an **Alienware 32" curved**, running 3840×2160 — most likely the AW3225QF
-(4K 240 Hz QD-OLED), which supports FreeSync Premium Pro and G-Sync Compatible over
-HDMI 2.1 and DisplayPort. **VRR is available on this panel.** It is not reaching the Ally.
+> **Corrected 2026-09-17.** The monitor was read directly from its OSD: it is an **Alienware
+> AW3225DM** — a 31.5" curved **VA** panel, native **2560×1440**, 180 Hz over DisplayPort and
+> 144 Hz over HDMI, DisplayHDR 400, with **no speakers and no audio output of any kind**. It is
+> not an AW3225QF and it is not a 4K display. The guidance below that assumes a 3840×2160 panel
+> — including the 1080p integer-scaling argument — does not apply. See
+> [Xbox Series X on the Alienware AW3225DM](docs/xbox-series-x/alienware-monitor-setup.md).
+>
+> **This strengthens the dock diagnosis rather than weakening it.** A 1440p panel does not
+> advertise 3840×2160. A DisplayLink-class dock synthesises its own EDID, and one fake 4K60 mode
+> accounts for all three observations at once: the 4K desktop, the `59, 60` list at *every*
+> resolution including 1080p, and the audio device — which cannot have been the monitor, because
+> this monitor has no speakers.
+
+Display is an **Alienware 32" curved**. The original inference below — that it was an AW3225QF
+(4K 240 Hz QD-OLED) — was wrong, but the conclusion it supported still holds:
+**VRR is available on this panel.** It was not reaching the Ally.
 
 The dock is the suspect, and the evidence is stronger than a simple bandwidth ceiling:
 

@@ -1,204 +1,248 @@
-# Xbox Series X on the Alienware 32" 4K QD-OLED
+# Xbox Series X on the Alienware AW3225DM
 
-**Time:** ~45 minutes, most of it the HDR calibration app
+**Time:** ~30 minutes
 **Risk:** none
-**You'll need:** the Ultra High Speed HDMI cable in the Xbox box, and the Xbox HDR Calibration app
+**You'll need:** the Ultra High Speed HDMI cable from the Xbox box
 
-This picks up from the [ROG Ally X TDP reference](../../ally-x-tdp-reference.md), which documented
-the same monitor from the handheld's side. Much of what was learned there applies. One thing —
-the single most important thing — must be **inverted**.
-
----
-
-## What carries over, and what doesn't
-
-| From the Ally work | Applies to Xbox? | Why |
-|---|---|---|
-| Monitor is capped at 59/60 Hz | **No** | That was the dock. Xbox connects direct — the panel does 4K 120 Hz |
-| VRR unavailable | **No** | Same cause. VRR works over a direct HDMI 2.1 link |
-| High refresh + low frame cap | **Yes** | Exactly the same logic, see [Frame rate](#4-frame-rate-and-the-40-fps-principle) |
-| Cable quality is not a detail | **Yes** | Still the most common cause of a missing 120 Hz option |
-| Set 60 Hz, never 59 | **Yes, but moot** | You'll be at 120 |
-| **Render games at 1080p** | **NO — invert this** | See below. This is the big one |
-
-### The 1080p rule does not transfer
-
-The Ally reference is emphatic that games should run at 1080p and integer-scale to 4K. That advice
-was correct **for a 12-CU iGPU on a 30 W budget**. 4K is 4× the pixels of 1080p, and a Z1 Extreme
-cannot pay for them.
-
-The Series X is a ~12 TFLOP, ~150 W console built specifically to drive this resolution. It has its
-own per-title render targets and reconstruction, tuned by the developer, and it is far better at
-that decision than you are from a settings menu.
-
-**Set the Xbox to 4K UHD and never think about resolution again.** There is no TDP profile, no FSR
-choice, and no render-resolution decision to make on this platform. That entire layer of the Ally
-guide has no Xbox equivalent.
+Companion to the [ROG Ally X TDP reference](../../ally-x-tdp-reference.md), which documented the same
+monitor from the handheld's side — and **misidentified it**. See
+[Monitor identification](#monitor-identification) before trusting anything that document says about
+the display.
 
 ---
 
-## 1. The physical link
+## Your hardware
 
-The monitor has **two full-bandwidth HDMI 2.1 FRL ports (48 Gbps)**. That is enough for
-4K / 120 Hz / 10-bit / RGB 4:4:4 with room to spare, which is the ceiling the Xbox can actually hit.
+Read from the monitor's OSD (*Others → Display Info*), not inferred:
 
-- **Use the HDMI cable that came with the Xbox.** It is a certified Ultra High Speed (48 Gbps)
-  cable. The drawer cable is how you end up without a 120 Hz option and no error message saying why
-  — the same failure mode documented in Ally Phase 8.
-- **Do not put anything in the middle.** No dock, no hub, no HDMI switch, no capture card unless it
-  is explicitly 4K120 HDMI 2.1 passthrough. Everything that went wrong on the Ally side of this
-  monitor went wrong in exactly that position in the chain.
-- **One of the two HDMI ports is the eARC port.** If you plan to run audio to a soundbar or receiver
-  (see §6), put the *audio device* on the eARC port and the Xbox on the other one.
+| | |
+|---|---|
+| **Model** | Alienware **AW3225DM** — firmware `M2C102` |
+| **Panel** | 31.5" curved **VA**, 1500R |
+| **Native resolution** | **2560 × 1440** (QHD) — *not* 4K |
+| **Refresh** | 180 Hz over DisplayPort 1.4 · **144 Hz max over HDMI** |
+| **HDMI** | 2 × **HDMI 2.1 TMDS** with VRR — ~18 Gbps, **not** 48 Gbps FRL |
+| **HDR** | DisplayHDR 400, no local dimming, 95 % DCI-P3 |
+| **Audio** | **None.** No speakers, no 3.5 mm jack, no eARC |
+| **Other ports** | 1 × DP 1.4 (HBR3), USB-B upstream, 2 × USB-A downstream |
 
-## 2. Xbox video output settings
+### Monitor identification
 
-**Settings → General → TV & display options**
+The Ally reference records this display as an *"Alienware 32" curved, 3840×2160 — most likely the
+AW3225QF"*. **Both halves of that are wrong.** The OSD reports AW3225DM, and the panel is 1440p.
 
-| Setting | Value | Why |
+The 4K desktop that observation was based on is better explained by the dock: a DisplayLink-class
+dock **synthesises its own EDID**, commonly advertising a 4K60 mode the real panel does not have,
+capping every resolution at 60 Hz, and presenting its own audio device. That single cause accounts
+for the fake 3840×2160, the `59, 60` list at *every* resolution including 1080p, and the audio
+routing — all three pieces of evidence at once. The prior session's dock diagnosis was right; this
+strengthens it.
+
+---
+
+## The constraint that drives everything: TMDS, not FRL
+
+Display Info reports `HDMI 2.1 TMDS (VRR)`. That wording matters more than the "2.1" does.
+
+HDMI 2.1 permits two signalling schemes. **FRL** is the 48 Gbps one people mean when they say
+"HDMI 2.1". **TMDS** is the older ~18 Gbps scheme — HDMI 2.0 bandwidth, carrying some 2.1 features
+like VRR. Your ports are TMDS.
+
+Approximate cost of each mode over an 18 Gbps ceiling:
+
+| Mode | Bandwidth | Fits? |
 |---|---|---|
-| Resolution | **4K UHD** | Native panel resolution. See the inversion above |
-| Refresh rate | **120 Hz** | Unlocks Performance modes, 40 fps modes, and the VRR window |
-| Color depth | **30-bit (10-bit)** | Required for proper HDR. You have the bandwidth |
-| Color space | **Standard (Recommended)** | Limited range, which is what the monitor expects over HDMI |
+| 1440p120, 8-bit RGB | ~14.1 Gbps | Comfortably |
+| 1440p120, 10-bit RGB | ~17.6 Gbps | **Barely** |
+| 4K60, 8-bit RGB | ~16.7 Gbps | Yes, but see below |
+| 4K120 anything | far over | **No** |
 
-### Do not select 1440p
+Two consequences: 4K120 is physically impossible on this link, and 10-bit at 1440p120 sits right on
+the edge. Everything below follows from that.
 
-The Xbox offers 1440p, and on this monitor it is a trap: **the AW3225QF does not accept 1440p at
-120 Hz from a console.** Selecting it drops you to 60 Hz. There is no firmware fix — it is a
-hardware limitation of the scaler.
+---
 
-So the choice is 4K at 120 Hz, or a mistake. Pick 4K.
+## What carries over from the Ally work
 
-## 3. Video modes
+| From the Ally reference | Applies here? | Why |
+|---|---|---|
+| Monitor capped at 59/60 Hz | **No** | That was the dock. Direct HDMI gives you 120 Hz |
+| VRR unavailable | **No** | Same cause. VRR works direct |
+| Protect refresh rate over resolution | **Yes** | The core lesson, and it decides §1 |
+| Cable quality is not a detail | **Yes** | Still true |
+| Render 1080p, integer-scale to 4K | **No — the panel isn't 4K** | Irrelevant on a 1440p display |
+| TDP profiles, FSR, render targets | **No** | No console equivalent |
 
-**TV & display options → Video modes.** Enable:
+---
 
-- [x] **Allow 4K**
-- [x] **Allow HDR10**
-- [x] **Allow Dolby Vision** — see §5
-- [x] **Allow Auto Low-Latency Mode (ALLM)** — the monitor supports it; it switches to low-latency
-      automatically on game launch
-- [x] **Allow Variable Refresh Rate** — the thing the dock stole from the Ally. You get it here
-- [ ] **Allow YCC 4:2:2** — **turn this OFF**
+## 1. Resolution — take 1440p, refuse 4K
 
-That last one is counterintuitive and is on by default. YCC 4:2:2 is a *chroma-subsampled* fallback
-for displays without the bandwidth for full 4:4:4 at 4K120. You have 48 Gbps. Leaving it enabled
-lets the console negotiate down to 4:2:2, which softens fine detail and coloured text for no gain.
-Turn it off and you stay on RGB / 4:4:4.
+The Xbox offers 4K. **Selecting it drops you to 60 Hz.** Don't.
 
-## 4. Frame rate, and the 40 fps principle
+- Your panel is 2560 × 1440. A 4K signal is downscaled by the monitor's scaler to 1440p regardless —
+  you pay full 4K rendering cost for detail the panel physically cannot display.
+- You halve your refresh rate, losing every 120 fps Performance mode and any 40 fps mode.
+- The console renders 2.25× the pixels to get there.
 
-This is where the Ally reasoning transfers cleanly.
+There is a theoretical supersampling argument for 4K → 1440p downscaling. A budget VA monitor's
+scaler is not the place to cash it in, and it costs half your refresh rate to find out.
 
-The Ally doc explains why a 40 fps cap needs a 120 Hz panel: at 60 Hz, 40 fps means 1.5 refreshes
-per frame — a visible 1-2-1-2 judder — so the only cleanly paced caps at 60 Hz are 30 and 60. At
-120 Hz, 40 fps is exactly 3 refreshes per frame and paces perfectly.
+> **Note the symmetry.** On the AW3225QF this guide originally targeted, *1440p* was the setting that
+> silently cost you 120 Hz. On the AW3225DM it's *4K*. Same rule underneath: match the panel's native
+> resolution, and protect refresh rate.
 
-**The same maths is why you set the Xbox to 120 Hz even for 30 and 60 fps games.** Console games
-increasingly ship a 40 fps mode, and the Xbox only exposes those modes when the display is running
-at 120 Hz. You are not committing to rendering 120 fps — you are buying the refresh window that
-makes every other cap land cleanly.
+### Untick `Allow 4K` — the resolution setting alone does not hold
 
-With VRR on, the pacing question mostly disappears anyway. VRR over HDMI on this panel runs roughly
-**48–120 Hz**, with low framerate compensation doubling frames below that. A 30 fps title is driven
-at 60 Hz; a 40 fps title at 80 Hz. This is the same LFC behaviour the Ally doc describes on the
-internal panel — it just actually works here.
+**Verified on this setup.** With the dashboard set to 1440p / 120 Hz and `Allow 4K` ticked, launching
+a game switched the output to `2160p 36-BIT`. The console overrode the dashboard resolution on its
+own, the monitor downscaled 4K back to its native 1440p, and the 120 Hz the dashboard had been
+running was gone.
 
-In-game, prefer the developer's **Performance / 120 Hz mode** for anything twitchy and **Quality**
-for slower single-player titles. On back-compat titles, check **FPS Boost** in the game's
-Compatibility Options.
+The `36-BIT` is the tell. 12 bits per channel at 4K cannot fit an 18 Gbps TMDS link as RGB, so the
+console reached for `Allow YCC 4:2:2` to make it fit. The result is four costs and no benefit:
+2.25× the rendering work, subsampled chroma, every extra pixel discarded in the scaler, and the
+refresh rate halved.
 
-## 5. HDR, Dolby Vision, and calibration
+**Video modes → untick `Allow 4K`.** The resolution picker sets a preference; the capability flag is
+what games actually negotiate against. Nothing is lost — the panel cannot display 4K, and streaming
+apps will serve 1440p or lower to a display that doesn't claim it.
 
-### Monitor OSD
+Re-check Display Info **inside a game**, not on the dashboard. The dashboard will happily report a
+mode that games then override.
 
-Using the joystick under the bottom bezel:
+## 2. Refresh rate — 120 Hz
 
-- Set the Xbox's input to **Console Mode**. This is the AW3225QF's source-based tone mapping path —
-  it hands tone mapping to the console rather than doing it in the monitor, which is what you want
-  when the console has been calibrated to the panel.
-- Enable **VRR / Adaptive-Sync** for that input.
-- Leave response time on the default. OLED pixel transitions are ~0.03 ms; there is no overdrive
-  setting worth tuning.
+**Settings → General → TV & display options → Refresh rate: 120 Hz**
 
-### Dolby Vision
+The Xbox offers only 60 and 120. The monitor's 144 Hz is reachable from a PC over DisplayPort and
+never from a console — nothing is being left on the table.
 
-This monitor was the first gaming monitor to ship Dolby Vision, and the Series X supports Dolby
-Vision for gaming. On paper it is an ideal pairing, and for DV-enabled titles it is a genuine
-upgrade over HDR10's static metadata.
+120 Hz is what unlocks games' 120 fps Performance modes, any 40 fps modes, and gives VRR a usable
+window. This is the one setting from the Ally work that transfers without modification.
 
-**Test it rather than assuming it.** DV gaming implementations have historically been the place
-where 120 Hz or VRR quietly drops out. Turn it on, then go back and confirm the Xbox still reports
-**4K, 120 Hz, VRR active**.
+## 3. Color depth and color space
 
-If enabling Dolby Vision costs you 120 Hz or VRR, **turn it back off**. HDR10 at 120 Hz with VRR
-beats Dolby Vision at 60 Hz without it, every time. Non-DV titles are unaffected either way — they
-run HDR10 regardless.
+**TV & display options → Video fidelity & overscan**
 
-### Run the calibration app
+| Setting | Value |
+|---|---|
+| Color depth | **30 bits per pixel (10-bit)** |
+| Color space | **Standard (Recommended)** |
 
-Install **Xbox HDR Calibration** (free, in the Store) and run it. It is not optional — without it
-the console is guessing at the panel's peak brightness and will either clip highlights or leave the
-image flat.
+Set 30-bit as a ceiling, not a promise. **In SDR the console outputs 8-bit regardless**, so Display
+Info will read `24-BIT` on the dashboard even with 30-bit selected. That is expected and not a
+fallback. The setting only takes effect when an HDR signal is actually running — which, per the
+table above, is where the link gets tight.
 
-Two rules:
+Keep color space on **Standard**. `PC RGB` is full-range and requires the display to be set to match;
+Standard is what the monitor expects from a console over HDMI.
 
-1. Run it **in the exact mode you will play in** — HDR on, Console Mode selected, Dolby Vision in
-   whatever state you settled on above.
-2. **Re-run it** if you change the monitor's preset or input afterwards. The calibration is tied to
-   the panel behaviour it measured.
+### `Allow YCC 4:2:2` — leave it ticked here
 
-### A known QD-OLED trait
+The opposite of the advice for a full-bandwidth panel, and for a specific reason: 4:2:2 halves chroma
+bandwidth, which is the difference between 10-bit HDR at 1440p120 fitting and not fitting. On an
+18 Gbps link it is a genuine safety valve, not waste.
 
-This panel has well-documented **VRR flicker in dark scenes and on loading screens** — brightness
-wobble during rapid framerate swings. It is characteristic of QD-OLED and not a fault with your
-unit. If it bothers you more than tearing does, the fix is to turn VRR off; there is no setting that
-gives you both.
+The cost is softened fine detail and coloured text. If you settle on SDR (§5), untick it — 8-bit RGB
+has bandwidth to spare and you'd be paying the chroma penalty for nothing.
 
-## 6. Audio — plan this before you set it up
+**Untick `Allow 4K` first, though.** While 4K is permitted, 4:2:2 is what lets the console negotiate
+a 4K mode that would otherwise be impossible on this link — the safety valve becomes the enabler of
+the exact mode you don't want.
 
-**The AW3225QF has no built-in speakers and no 3.5 mm headphone jack.** Its only audio output is
-**HDMI eARC**. Plugging the Xbox in and expecting sound will not work.
+## 4. VRR and ALLM
 
-Three options, in order of effort:
+**Variable refresh rate: on.** The Xbox dropdown offers *Off*, *Gaming only*, *Always On*.
+
+**Prefer `Gaming only`.** VA panels are prone to VRR flicker — brightness wobble when frame rate
+swings, worst in dark scenes. `Always On` extends VRR to the dashboard, menus, and video apps, where
+frame rates are fixed and VRR buys nothing but the flicker risk remains. If you see no flicker at
+all, `Always On` costs nothing to go back to.
+
+**There is no FreeSync or Adaptive-Sync toggle in this monitor's OSD.** It is always enabled and
+negotiated automatically. Two confirmations that it is live:
+
+- Display Info reads `MONITOR CAPABILITY: HDMI 2.1 TMDS (VRR)`
+- The Xbox's VRR dropdown is selectable rather than greyed out — the console greys it when the
+  display doesn't advertise VRR
+
+To verify end to end: run a game with a variable frame rate and open Display Info. `STREAM INFO`
+reads `-` on the SDR dashboard; it should populate under an active VRR game.
+
+### ALLM is greyed out, and that's fine
+
+`Allow auto low-latency mode` is unavailable — the monitor doesn't advertise ALLM.
+
+**Ignore it.** ALLM exists to make a *TV* bypass its picture-processing pipeline. A 1 ms gaming
+monitor has no such pipeline to escape; it is already in its low-latency state. The practical cost of
+not having ALLM here is close to zero. Don't spend time on it, and don't buy anything to fix it.
+
+## 5. HDR — set expectations first
+
+`Allow HDR10` and `Auto HDR` are available. Before switching them on, know what the panel can do.
+
+**DisplayHDR 400 is the entry tier**: ~400 nits peak and **no local dimming requirement**. HDR
+highlights cannot meaningfully exceed SDR brightness because there is no brightness headroom to
+give them. VA's strong native contrast (far better than IPS) helps more than the certification
+suggests, but this is not an HDR display in the sense the marketing implies.
+
+**Treat HDR as a test, not a default.** Enable `Allow HDR10`, then judge honestly against SDR:
+raised blacks, dim highlights, or a flat washed look mean SDR is winning — which is a common and
+legitimate outcome on this panel tier.
+
+`Auto HDR` synthesises HDR for SDR-only games. It inherits every limitation above and adds
+inference. Evaluate it separately from HDR10, and be willing to leave it off.
+
+**Dolby Vision: leave both entries unticked.** This panel does not support it.
+
+### If you keep HDR on
+
+Run the **Xbox HDR Calibration** app (free, in the Store), in the exact monitor preset you'll play
+in, and re-run it if you change presets. Then re-check Display Info: you want `30-BIT` at `120Hz`.
+If refresh dropped to 60, the link couldn't carry it — keep `Allow YCC 4:2:2` ticked, or drop HDR.
+
+## 6. Monitor OSD
+
+Defaults as shipped are not what you want.
+
+| Setting | Found at | Set to | Why |
+|---|---|---|---|
+| **Preset modes** | `MOBA/RTS` | **Standard** | Genre presets push saturation and edge enhancement, clipping highlight and shadow detail |
+| **Response time** | `SUPER FAST` | **Fast** | On VA, max overdrive overshoots — bright halos and inverse ghosting behind moving objects |
+| **Sharpness** | `30` | **50** | Native-resolution signal wants neutral: no edge enhancement, no softening |
+| **Console mode** | `OFF` | **Try On** | Adjusts colour handling for console sources. A/B it; a wash means leave it off |
+| **Input color format** | `RGB` | **RGB** | Already correct |
+| **Smart HDR** | `GAME HDR` | leave | Only matters if §5 lands on HDR |
+| **Dark stabilizer** | `0` | **0** | Raising it lifts blacks and throws away VA's best trait |
+| **Game enhance mode** | `OFF` | **OFF** | Crosshair and timer overlays |
+
+Response time is worth A/B-ing yourself: find fast horizontal motion and watch the trailing edge of
+high-contrast objects. Bright trails mean the overdrive is overshooting; step it down.
+
+## 7. Audio — there is none, by design
+
+**The AW3225DM has no speakers, no 3.5 mm jack, and no eARC.** No cable or setting produces sound
+from this monitor. Silence after connecting the Xbox is correct behaviour, not a fault.
+
+The Series X also has no 3.5 mm or optical output of its own, so audio must come off the console
+directly:
 
 | Option | How | Notes |
 |---|---|---|
-| **Controller headset** | 3.5 mm jack on the Xbox controller, or a USB/wireless headset | Zero extra hardware. Fine for solo play |
-| **eARC soundbar / receiver** | Audio device on the monitor's **eARC** HDMI port, Xbox on the other | Proper solution. Set Xbox audio output to bitstream |
-| **Xbox → AVR → monitor** | Receiver in the middle | Only if the AVR is genuinely HDMI 2.1 4K120 passthrough. Otherwise this recreates the dock problem |
+| **Controller headset** | 3.5 mm jack on the Xbox controller | Zero extra hardware. The default answer |
+| **USB / Xbox Wireless headset** | Straight to the console | Wireless without Bluetooth, which the Xbox doesn't do for audio |
+| **HDMI audio extractor** | Between Xbox and monitor | Works, but it is a box in the video path — it must pass 1440p120 with VRR intact, or you have recreated the dock problem |
 
-> **Open question from the Ally work.** `ally-x-tdp-reference.md` records that *"audio does route to
-> the TV through the dock"* and uses that as weak evidence about EDID survival. If this display is
-> an AW3225QF, it has no speakers, so that audio was going somewhere else — a headset, an eARC
-> device, or a different display entirely. Worth resolving, because that observation was doing work
-> in the dock diagnosis.
+Prefer the first two. The whole reason the Ally's display chain went wrong was a device sitting in
+the middle of the HDMI link.
 
-## 7. OLED panel care
+## 8. Panel care — nothing to do
 
-This matters far more than it did on the Ally's IPS panel, and the Xbox is a worse offender than a
-handheld: a console sits on a static dashboard, and game HUDs are fixed bright elements held in the
-same pixels for hundreds of hours.
+This is a **VA** panel. There is no burn-in risk, no image retention, no pixel-refresh cycle, and no
+power-strip rule. The OLED maintenance advice that applies to the AW3225QF does not apply to you.
 
-**On the monitor** — *OSD → Others → OLED Panel Maintenance*:
-
-- **Pixel Refresh** — runs automatically every 4 hours of use, takes 6–8 minutes. The power LED
-  blinks green while it runs.
-- **Panel Refresh** — the long cycle, at 7000 hours.
-
-**The rule that protects these:** let the refresh cycles finish. Do not cut power at the wall or a
-switched power strip while the LED is blinking — put the monitor to sleep instead. An interrupted
-refresh cycle is the most common way people undermine the protection they already have.
-
-**On the Xbox** — *Settings → General → Power options*:
-
-- Set **Turn off display after** to 10 or 15 minutes. The dashboard is static, bright, and
-  permanently visible otherwise.
-- Consider putting the console to sleep rather than leaving the dashboard up between sessions.
-
-Also worth doing: run HDR games at the calibrated level rather than pushing brightness to maximum,
-and do not leave a paused game with a full-screen HUD on for hours.
+Set a sensible display-sleep timer under *Settings → General → Power options* for the electricity,
+and otherwise ignore this topic entirely.
 
 ---
 
@@ -206,17 +250,20 @@ and do not leave a paused game with a full-screen HUD on for hours.
 
 | Setting | Where | Value |
 |---|---|---|
-| Resolution | Xbox → TV & display | 4K UHD |
-| Refresh rate | Xbox → TV & display | 120 Hz |
-| Color depth | Xbox → TV & display | 30-bit (10-bit) |
-| Color space | Xbox → TV & display | Standard |
-| Allow 4K / HDR10 / DV / ALLM / VRR | Xbox → Video modes | On |
-| Allow YCC 4:2:2 | Xbox → Video modes | **Off** |
-| 1440p | anywhere | **Never** — costs you 120 Hz |
-| Preset | Monitor OSD | Console Mode |
-| VRR / Adaptive-Sync | Monitor OSD | On |
-| HDR calibration | Xbox HDR Calibration app | Run once, in final display mode |
-| Turn off display after | Xbox → Power options | 10–15 min |
+| Resolution | Xbox → TV & display | **1440p** |
+| Refresh rate | Xbox → TV & display | **120 Hz** |
+| Allow 4K | Video modes | **Untick** — games override the resolution picker otherwise |
+| Color depth | Video fidelity & overscan | 30-bit (10-bit) |
+| Color space | Video fidelity & overscan | Standard |
+| Allow YCC 4:2:2 | Video modes | **On** if HDR, off if SDR |
+| Variable refresh rate | Video modes | Gaming only |
+| Allow auto low-latency mode | Video modes | Unavailable — ignore |
+| Allow Dolby Vision / DV for Gaming | Video modes | **Off** — unsupported |
+| Allow HDR10 / Auto HDR | Video modes | Test, then decide |
+| Preset modes | Monitor OSD | Standard |
+| Response time | Monitor OSD | Fast |
+| Sharpness | Monitor OSD | 50 |
+| Audio | — | Off the console, not the monitor |
 
 ---
 
@@ -224,26 +271,36 @@ and do not leave a paused game with a full-screen HUD on for hours.
 
 | Symptom | Check first |
 |---|---|
-| No 120 Hz option | Cable (use the Xbox's own), then confirm nothing is in the middle of the link |
-| Stuck at 60 Hz | Resolution set to 1440p — this monitor won't do 1440p120 from a console |
-| Text and edges look soft | "Allow YCC 4:2:2" is on; turn it off to get RGB 4:4:4 |
-| HDR looks washed out or flat | Calibration app not run, or run in a different monitor preset |
-| 120 Hz or VRR disappeared | Dolby Vision. Disable it and re-check |
-| Brightness wobbles in dark scenes | QD-OLED VRR flicker. Expected. Disable VRR if intolerable |
-| No sound at all | The monitor has no speakers. See §6 |
-| Black levels crushed or grey | Color space mismatch — try the other of Standard / PC RGB |
+| Drops to 4K when a game launches | `Allow 4K` still ticked. The resolution picker alone won't stop it |
+| Stuck at 60 Hz | Resolution set to 4K, or `Allow 4K` still ticked |
+| No 120 Hz option | Cable — use the Xbox's own; then confirm nothing sits in the HDMI path |
+| Display Info says `24-BIT` with 30-bit selected | Expected in SDR. Only HDR content drives 10-bit |
+| Refresh drops to 60 when HDR turns on | Link is over-subscribed. Keep `Allow YCC 4:2:2` ticked |
+| Text and edges look soft | 4:2:2 is active. Untick it if you're running SDR |
+| Brightness wobbles in dark scenes | VA VRR flicker. Try `Gaming only`, or VRR off |
+| Bright trails behind moving objects | Response time overdrive overshooting. Step down from Super Fast |
+| HDR looks washed out or flat | DisplayHDR 400 with no local dimming. SDR may genuinely be better |
+| ALLM greyed out | Expected, and near-irrelevant on a gaming monitor. Ignore |
+| No sound | The monitor has no audio output of any kind. See §7 |
 
 ---
 
 ## Done when
 
-- [ ] Xbox connected direct to HDMI with the Ultra High Speed cable, nothing in between
-- [ ] 4K / 120 Hz / 10-bit confirmed in TV & display options
-- [ ] VRR and ALLM confirmed active, not just enabled
-- [ ] YCC 4:2:2 disabled
-- [ ] Dolby Vision tested, and a deliberate keep-or-drop decision made
-- [ ] HDR calibration app run in the final display mode
-- [ ] Monitor set to Console Mode
-- [ ] Audio path chosen and working
-- [ ] Display sleep timer set, and the power-strip rule understood
-- [ ] Monitor model confirmed from the OSD, not inferred
+- [x] Model confirmed from the OSD — AW3225DM, not inferred
+- [x] Xbox direct to HDMI 1, nothing in the path
+- [x] 1440p at 120 Hz confirmed in Display Info
+- [x] Color depth 30-bit, color space Standard
+- [x] VRR confirmed available (monitor advertises it, Xbox offers it)
+- [x] ALLM understood as unavailable and not worth chasing
+- [x] Dolby Vision left off
+- [ ] `Allow 4K` unticked, and a game re-checked in Display Info for 1440p at 120 Hz
+- [ ] VRR confirmed end-to-end via `STREAM INFO` under a running game
+- [ ] VRR set to `Gaming only` and flicker assessed
+- [ ] Monitor preset, response time and sharpness corrected
+- [ ] HDR10 and Auto HDR tested against SDR, and a decision made
+- [ ] `Allow YCC 4:2:2` settled once the HDR decision is made
+- [ ] Audio path chosen
+
+The unchecked items are live work, not omissions — they need judgement calls made in front of the
+panel rather than values that can be looked up.
