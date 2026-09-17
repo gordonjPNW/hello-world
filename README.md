@@ -7,6 +7,9 @@ A simple starter project.
 - **[ROG Ally X Optimization Guide](docs/ally-x/00-overview.md)** — an 11-phase runbook for tuning an
   ASUS ROG Ally X (2024) on Windows 11 + Steam, covering handheld and docked use. Start with the
   [overview](docs/ally-x/00-overview.md).
+- **[Xbox Series X on the Alienware 32" 4K QD-OLED](docs/xbox-series-x/alienware-monitor-setup.md)** —
+  display, HDR, audio, and panel-care settings for the same monitor covered in the Ally X reference,
+  driven by a console instead of a handheld.
 
 ## Tools
 
