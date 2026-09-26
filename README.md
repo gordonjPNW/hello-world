@@ -7,6 +7,8 @@ A simple starter project.
 - **[ROG Ally X Optimization Guide](docs/ally-x/00-overview.md)** — an 11-phase runbook for tuning an
   ASUS ROG Ally X (2024) on Windows 11 + Steam, covering handheld and docked use. Start with the
   [overview](docs/ally-x/00-overview.md).
+- **[Aniimo Starter Guide](docs/aniimo/starter-guide.md)** — first-week tips for the free-to-play
+  creature-catching RPG on Xbox: starter pick, catching, team roles, Twine, level cap and Lumin Ambers.
 
 ## Tools
 
