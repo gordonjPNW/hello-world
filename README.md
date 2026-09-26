@@ -8,7 +8,8 @@ A simple starter project.
   ASUS ROG Ally X (2024) on Windows 11 + Steam, covering handheld and docked use. Start with the
   [overview](docs/ally-x/00-overview.md).
 - **[Aniimo Starter Guide](docs/aniimo/starter-guide.md)** — first-week tips for the free-to-play
-  creature-catching RPG on Xbox: starter pick, catching, team roles, Twine, level cap and Lumin Ambers.
+  creature-catching RPG on Xbox: starter pick, catching, team roles, Twine, level cap, Lumin Ambers,
+  eggs and co-op.
 
 ## Tools
 
