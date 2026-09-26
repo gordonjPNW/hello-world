@@ -94,6 +94,77 @@ The shiny collectibles all over the world are **Lumin Ambers**.
   Fields** region to turn them in.
 - Grab every one you pass and turn them in often.
 
+## Eggs and hatching
+
+Catching isn't the only way to get Aniimo. Eggs can hatch rarer ones, including **Prismana**
+forms (the rare shimmering variants).
+
+### Where eggs come from
+
+- **Nests** all over Idyll. Look for sparkling lights, traversal puzzles (bouncy flowers, burning
+  hedges, burrows) and high spots such as rock pillars and gnarled trees.
+- **Companion Handbook** rewards when you reach certain level milestones.
+- **Operation: Egg Heist**, once you unlock it (see Co-op below).
+
+### Reading an egg
+
+An egg's labels tell you what it might hatch into before you hatch it:
+
+- **Element label:** the element the Aniimo is likely to be.
+- **Quality tier:** there are 13 tiers, from ordinary up to **Perfect** and **Incredible**. Rarer
+  eggs (blue, then purple, then gold) take longer to hatch.
+- **Rainbow Glow★** raises the chance of a Prismana hatch. A **Prismana egg** guarantees one.
+
+### Hatching
+
+1. Put eggs in the **Hatchinator** (the incubator at your Homeland/Outpost). It holds **three**
+   eggs, and the middle slot is reserved for special eggs.
+2. Wait. Timers keep running while you're offline. Purple eggs take about 2–2.5 hours and gold eggs
+   up to about 5.
+3. When an egg is ready, go back to the Hatchinator and **Twine** the egg to hatch it.
+
+**Egg tips**
+
+- **Fill every slot before you stop playing.** An empty Hatchinator overnight is a hatch you missed.
+- **Caress** your eggs to shorten the wait. There's a daily limit, and friends can caress your eggs
+  too.
+- **Save your best eggs for the weekend.** Hatch times are halved Friday to Sunday.
+- Your Homeland's **Egg Handbook** logs each new egg type and pays out rewards as it fills, so it's
+  worth hatching types you haven't seen yet.
+
+## Co-op with friends
+
+### Unlocking it
+
+Co-op unlocks early. Follow the story until you beat **Alpha Turbo**. Passing that assessment
+gives you the rank of **I Student** and unlocks the **Friends** and **Party** menus. To add
+someone, search for their username or ID in the Friends list.
+
+### How it works
+
+- One player **hosts**, and up to **3 friends** join that host's world (4 players in total). The
+  game has built-in voice chat.
+- **Catches and loot belong to each player.** Everyone can catch Aniimo and open chests, as long
+  as they're close to each other. In co-op Alpha fights, every player gets their own catch attempt.
+- **Only the host's world and quest progress is saved.** If you help a friend through a quest in
+  their world, you still have to do it yourself in yours.
+- **The main story is solo only.** You can't bring friends into main story quests.
+
+### Co-op tips
+
+- **Host from the player who's furthest behind** so nobody's world gets ahead of where they are.
+- **Stay close to each other** so you all get the catches and chests. **Companion Mode** makes one
+  player the leader and has the others follow automatically.
+- Use co-op time for **bosses, Alphas, chests, puzzles and duo Sanctums**, not the story.
+- Ask friends to **caress your eggs** while they're in your world.
+
+### Operation: Egg Heist (later)
+
+**Egg Heist** is the game's only PvP mode. Teams of up to **3** land on the **Lost Isles**, gather
+materials and try to escape with a giant **Darkler Egg** while wild creatures and rival teams get
+in the way. It needs **level 50** and **Veteran Pathfinder** rank, so it opens well after regular
+co-op. It's a good source of eggs once you get there.
+
 ## Currencies at a glance
 
 The game has a lot of currencies. For beginners, only these three matter:
@@ -127,6 +198,8 @@ progress. Put your early resources into your starter and your main team, not cos
 - [ ] Try Twine in a fight
 - [ ] Follow the Main Story to your first Elite Training
 - [ ] Turn in any Lumin Ambers at the Breezy Plains Branch
+- [ ] Fill all three Hatchinator slots before you log off
+- [ ] Beat Alpha Turbo to unlock co-op, then add your friends
 
 ## Sources
 
@@ -140,4 +213,9 @@ progress. Put your early resources into your starter and your main team, not cos
 - [Sportskeeda — currencies explained](https://www.sportskeeda.com/esports/aniimo-currencies-explained)
 - [Game8 — type chart](https://game8.co/games/Aniimo/archives/618352)
 - [AniimoTools — combat roles](https://aniimotools.dev/roles/)
+- [Game Rant — finding and hatching eggs](https://gamerant.com/aniimo-how-get-hatch-eggs-incubation-guide/)
+- [AniimoTools — eggs, Hatchinator and Egg Labels](https://aniimotools.dev/systems/eggs/)
+- [Game8 — multiplayer explained](https://game8.co/games/Aniimo/archives/618325)
+- [TheGamer — how to play co-op](https://www.thegamer.com/aniimo-co-op-multiplayer-friends-guide/)
+- [games.gg — multiplayer, co-op and Egg Heist](https://games.gg/aniimo/guides/aniimo-multiplayer-guide/)
 - [G2A News — crossplay and cross-progression](https://www.g2a.com/news/features/guide/is-aniimo-crossplay-cross-platform-play-and-cross-progression-explained/)
