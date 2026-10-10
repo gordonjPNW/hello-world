@@ -198,7 +198,42 @@ materials and try to escape with a giant **Darkler Egg** while wild creatures an
 in the way. It needs **level 50** and **Veteran Pathfinder** rank, so it opens well after regular
 co-op. It's a good source of eggs once you get there.
 
-## Currencies at a glance
+## Endgame: after the story
+
+Finishing the main story opens up a lot more to do. Community guides suggest roughly this order:
+
+1. **Finish your Lumin Ambers.** Guides count about 150 on the map. The big reward is **infinite
+   stamina outside combat**, which makes everything else on this list faster.
+2. **Max your level and finish Elite Training.** You'll need a high level and a fully built team
+   for the harder content below.
+3. **Beat the Alpha and Omega bosses.** These are the big world bosses. First kills give extra
+   rewards, and once you've caught one you can teleport back for rematches.
+4. **Clear the Sanctums.** These are puzzle dungeons (about 17). A first clear gives a Lumin Amber
+   and Pathfinder EXP, plus optional chests. A few need **two players**, so save them for co-op.
+5. **Work through the Pathfinder Challenges.** Start with the ones in **Breezy Plains**. Leave the
+   **Elite** challenges until your team is fully built.
+6. **Fill your Aniilog and hunt Prismana.** Catch every species, and use Rainbow Glow★ and Prismana
+   eggs (see Eggs above) for the rare forms.
+7. **Set up your Homeland.** It unlocks after the final story quest. Assign Aniimo to produce goods,
+   then sell them for **Home Coins**.
+
+### Ongoing endgame modes
+
+| Mode | What it is |
+|---|---|
+| **Holo-Battle Simulator** | Fight stronger versions of the Alpha bosses within a 3-minute limit, solo or in co-op. A good test of your swap rotation |
+| **Operation: Egg Heist** | The PvP mode for teams of three (see Co-op above). A good source of eggs |
+| **Events and Legendary Journey quests** | Time-limited and extra quest lines with their own rewards |
+
+### Endgame tips
+
+- **Build a second team.** The Holo-Battle Simulator and Elite challenges punish a single element.
+  A second team of a different element covers the bosses your main team struggles with.
+- **Rematch bosses for materials** instead of grinding wild Aniimo. It's the faster way to gear up.
+- **Keep the Hatchinator full** and save your best eggs for weekends, when hatch times are halved.
+- **Check the in-game menus for exact counts.** Guides disagree on the number of bosses, Sanctums
+  and Aniilog entries.
+
 
 The game has a lot of currencies. For beginners, only these three matter:
 
@@ -254,4 +289,8 @@ progress. Put your early resources into your starter and your main team, not cos
 - [Game8 — multiplayer explained](https://game8.co/games/Aniimo/archives/618325)
 - [TheGamer — how to play co-op](https://www.thegamer.com/aniimo-co-op-multiplayer-friends-guide/)
 - [games.gg — multiplayer, co-op and Egg Heist](https://games.gg/aniimo/guides/aniimo-multiplayer-guide/)
+- [Game8 — endgame guide](https://game8.co/games/Aniimo/archives/624504)
+- [All Things How — 7 things to do after the story](https://allthings.how/aniimo-endgame-guide-all-7-things-to-do-after-the-story/)
+- [Game Rant — post-game guide](https://gamerant.com/aniimo-post-game-guide-what-to-do-endgame-farming-activities/)
+- [AniimoTools — Sanctums](https://aniimotools.dev/sanctums/)
 - [G2A News — crossplay and cross-progression](https://www.g2a.com/news/features/guide/is-aniimo-crossplay-cross-platform-play-and-cross-progression-explained/)
