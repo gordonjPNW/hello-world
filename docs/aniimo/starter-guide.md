@@ -69,6 +69,39 @@ There are nine elements: **Light, Fire, Ice, Dark, Lightning, Grass, Water, Eart
 
 Look up an enemy's element before a hard fight and bring an Aniimo that counters it.
 
+### Team-building tips
+
+- **Don't stack damage dealers.** A team of four DPS deals *less* damage overall: it runs short on
+  energy and never opens a Break window. Fill the roles first, then pick the strongest Aniimo you
+  have for each.
+- **Build around one main attacker.** Pick your strongest DPS (usually your starter early on) and
+  choose the other three to help it: a Break unit to open windows, a healer or Regen to keep it
+  alive, and a Support that boosts it or weakens the enemy.
+- **Learn the swap rotation.** The basic loop for tough fights:
+  1. Open with your **Break** Aniimo until the enemy's guard breaks.
+  2. Swap to your **DPS** for the damage window.
+  3. Bring in your **healer** when HP gets low, then start again.
+- **Use resistance shredders.** Some Aniimo lower an enemy's resistance to one element (for
+  example, Lunara's marks lower Light resistance). Pair a shredder with a DPS of that same
+  element and the two multiply each other.
+- **Keep one off-element slot.** A team that's all one element struggles against enemies that resist
+  it. A flexible fourth Aniimo of a different element covers the gaps.
+- **Invest in a core, not everyone.** Upgrade materials are limited. Level and gear your four main
+  team members first. Spread out later, once you know which matchups you struggle with.
+
+**Example early team** (names from community guides; swap in whatever you've caught for each
+role):
+
+| Slot | Role | Example |
+|---|---|---|
+| 1 | DPS | Your starter (Lunara or Helion) |
+| 2 | Break | **Rookey**, a strong breaker whatever the element |
+| 3 | Regen | **Somniwing**, which also helps with energy |
+| 4 | Heal | **Prismana Glacy**, or any healer you have |
+
+Recommended teams change with game updates, so check a current tier list before spending rare
+materials.
+
 ## Step 4 — Use Twine
 
 **Twine** links you with one of your Aniimo so you control it directly. It's used for getting
@@ -194,7 +227,7 @@ progress. Put your early resources into your starter and your main team, not cos
 - [ ] Pick your starter (Lunara if unsure)
 - [ ] Check the controller layout in the settings menu
 - [ ] Catch a few Aniimo from behind with Aniipods
-- [ ] Put together a DPS / Break / Heal team
+- [ ] Put together a DPS / Break / Heal team and practice the swap rotation
 - [ ] Try Twine in a fight
 - [ ] Follow the Main Story to your first Elite Training
 - [ ] Turn in any Lumin Ambers at the Breezy Plains Branch
@@ -211,6 +244,9 @@ progress. Put your early resources into your starter and your main team, not cos
 - [Game Rant — beginner tips](https://gamerant.com/aniimo-beginner-tips-tricks/)
 - [PC Gamer — is Aniimo a gacha game?](https://www.pcgamer.com/games/rpg/aniimo-is-it-gacha-monetization-explained/)
 - [Sportskeeda — currencies explained](https://www.sportskeeda.com/esports/aniimo-currencies-explained)
+- [games.gg — best teams for early, mid and late game](https://games.gg/aniimo/guides/aniimo-best-teams/)
+- [OSLink — team building guide](https://www.oslink.io/blog/guide/aniimo-team-building-guide.html)
+- [Game8 — best teams](https://game8.co/games/Aniimo/archives/622739)
 - [Game8 — type chart](https://game8.co/games/Aniimo/archives/618352)
 - [AniimoTools — combat roles](https://aniimotools.dev/roles/)
 - [Game Rant — finding and hatching eggs](https://gamerant.com/aniimo-how-get-hatch-eggs-incubation-guide/)
