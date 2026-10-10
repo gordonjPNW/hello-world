@@ -9,7 +9,7 @@ A simple starter project.
   [overview](docs/ally-x/00-overview.md).
 - **[Aniimo Starter Guide](docs/aniimo/starter-guide.md)** — first-week tips for the free-to-play
   creature-catching RPG on Xbox: starter pick, catching, team building, Twine, level cap, Lumin Ambers,
-  eggs and co-op.
+  eggs, co-op and the endgame.
 
 ## Tools
 
